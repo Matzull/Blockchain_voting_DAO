@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity > 0.8.0;
 import "arrayUtils.sol";
-import "@openzeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol"
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract MonsterTokens is ERC721simplified{
+
+contract Token is ERC20{
     struct Weapons {
         string[] names; // name of the weapon
         uint[] firePowers; // capacity of the weapon
