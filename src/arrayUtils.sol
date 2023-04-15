@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity > 0.8.0;
-import "safeMath.sol";
+import "./safeMath.sol";
 /**
 contains: this function has two parameters, an array of type string[] and a variable
 val of type string and returns a Boolean value that indicates whether val is in the
@@ -29,7 +29,7 @@ library arrayUtils {
 	}
 
     // Removes an element index of the list array
-	function removeElementOrdered(uint index, uint[] storage array) internal {
+	function removeElementUnordered(uint index, uint[] storage array) internal {
 		require(index < array.length, "Index out of range");
         array[index] = array[array.length - 1];
 		array.pop();
