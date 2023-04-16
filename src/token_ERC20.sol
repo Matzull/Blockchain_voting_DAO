@@ -6,8 +6,8 @@ import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.4.0/contr
 
 contract Stoken is ERC20, Ownable {
     
-    constructor() ERC20("SmartTokenX", "STX") owner(msg.sender()) {
-        _mint(msg.sender, 1000000 * (10 ** uint256(decimals())));
+    constructor(uint256 tokenAmount) ERC20("SmartTokenX", "STX") owner(msg.sender()) {
+        _mint(msg.sender, tokenAmount * (10 ** uint256(decimals())));
     }
 
     function mint(address to, uint256 amount) public onlyOwner {

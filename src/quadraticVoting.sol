@@ -2,6 +2,7 @@
 pragma solidity > 0.8.0;
 
 import "./token_ERC20.sol";
+import "./IExecutableProposal.sol";
 
 /*En la creacion de este contrato se debe proporcionar el precio en Wei de cada token y
 el numero maximo de tokens que se van a poner a la venta para votaciones. Entre otras
@@ -20,10 +21,26 @@ contract quadraticVoting is Ownable{
 
     mapping(address => uint) _balances;
 
-    constructor(){
-        token = new Stoken();
-        token.mint(tokenAmount);
+    struct t_proposal
+    {
+        string title;
+        string description; 
+        uint budget;
+        bool aproved;
+        address proposalAddress;
+        mapping (address => uint) _voters;
+        IExecutableProposal proposal;
+    }
+
+    mapping (uint => t_proposal) _proposals;
+
+    uint numberOfProposals;
+
+    constructor()
+    {
+        token = new Stoken(tokenAmount);
         owner(msg.sender());
+        numberOfProposals = 1;
     }
 
     
@@ -34,7 +51,7 @@ contract quadraticVoting is Ownable{
     con las aportaciones en tokens de los votos de las propuestas que se vayan aprobando
     y se decrementar ́a por el importe que se transfiere a las propuestas que se aprueben.*/
     
-    function openVoting() onlyOwner
+    function openVoting() onlyOwner payable
     {
         totalBudget = msg.value();
         isVotingOpen = true;
@@ -47,12 +64,13 @@ contract quadraticVoting is Ownable{
     para comprar tokens (al menos un token) que utilizar ́an para realizar sus votaciones.
     Esta funci ́on debe crear y asignar los tokens que se pueden comprar con ese importe. */
     
-    function addParticipant() payable
+    function addParticipant() public payable 
     {
         require(
                 msg.value() >= tokenPrice,
                 "Not enough Ether to purchase 1 token" 
         );
+        token.mint(msg.sender(), msg.value());
     }
 
 
@@ -74,9 +92,10 @@ contract quadraticVoting is Ownable{
     en caso de ser aprobada la propuesta. Debe devolver un identificador de la propuesta
     creada.*/
 
-    function addProposal()
+    function addProposal(string title, string description, uint budget, address proposalAddress) public VotingClosed returns (uint)
     {
-        
+        _proposals[numberOfProposals] = new t_proposal(title, description, budget, false, proposalAddress, IExecutableProposal(proposal));
+        return numberOfProposals++;
     }
 
 
@@ -84,42 +103,71 @@ contract quadraticVoting is Ownable{
     si la votaci ́on est ́a abierta. El  ́unico que puede realizar esta acci ́on es el creador de la
     propuesta. No se pueden cancelar propuestas ya aprobadas. Los tokens recibidos hasta
     el momento para votar la propuesta deben ser devueltos a sus propietarios.*/
-    /*buyTokens: Esta funci ́on permite a un participante ya inscrito comprar m ́as tokens para
-    depositar votos. */
 
-    function cancelProposal()
+    function cancelProposal(uint id) OnlyCreator
     {
         
     }
 
+    /*buyTokens: Esta funci ́on permite a un participante ya inscrito comprar m ́as tokens para
+    depositar votos. */
+
+    function buyTokens() public payable
+    {
+        token.mint(msg.sender(), msg.value());
+    }
+
 
     /* sellTokens: Operaci ́on complementaria a la anterior: permite a un participante devol-
-    ver tokens no gastados en votaciones y recuperar el dinero invertido en ellos.
-    getERC20: Devuelve la direcci ́on del contrato ERC20 que utiliza el sistema de votaci ́on
+    ver tokens no gastados en votaciones y recuperar el dinero invertido en ellos.*/
+    
+    function sellTokens(uint amount) public
+    {
+        token.burn(msg.sender(), amount);
+    }
+
+
+    /*getERC20: Devuelve la direcci ́on del contrato ERC20 que utiliza el sistema de votaci ́on
     para gestionar tokens. De esta forma, los participantes pueden utilizarlo para operar
     con los tokens comprados (transferirlos, cederlos, etc.).*/
-    
-    function sellTokens()
+
+    function getERC20()
     {
-        
+       return address(token);
     }
 
 
     /* getPendingProposals: Devuelve un array con los identificadores de todas las propues-
     tas de financiaci ́on pendientes de aprobar. Solo se puede ejecutar si la votaci ́on est ́a
     abierta.*/
-    
-    function getPendingProposals()
+
+    function getPendingProposals() public VotingOpen returns (uint[] memory) 
     {
-        
+        uint[] memory ret = new uint[](0);
+
+        for (uint i = 1; i < _proposals.length + 1; i++) {//We use length + 1 because proposals id start at 1
+            if(!_proposals[i].aproved)
+            {
+                ret.push(i);
+            }
+        }
+        return ret;
     }
 
     /*getApprovedProposals: Devuelve un array con los identificadores de todas las propues-
     tas de financiaci ́on aprobadas. Solo se puede ejecutar si la votaci ́on est ́a abierta. */
 
-    function getApprovedProposals()
+    function getApprovedProposals() public VotingOpen returns (uint[] memory)
     {
-        
+        uint[] memory ret = new uint[](0);
+
+        for (uint i = 1; i < _proposals.length + 1; i++) {//We use length + 1 because proposals id start at 1
+            if(_proposals[i].aproved)
+            {
+                ret.push(i);
+            }
+        }
+        return ret;
     }
 
 
@@ -127,22 +175,30 @@ contract quadraticVoting is Ownable{
     puestas de signaling (las que se han creado con presupuesto cero). Solo se puede ejecutar
     si la votaci ́on est ́a abierta. */
     
-    function getSignalingProposals()
+    function getSignalingProposals() public VotingOpen returns (uint[] memory)
     {
-        
+        uint[] memory ret = new uint[](0);
+
+        for (uint i = 1; i < _proposals.length + 1; i++) {//We use length + 1 because proposals id start at 1
+            if(_proposals[i].budget == 0)
+            {
+                ret.push(i);
+            }
+        }
+        return ret;
     }
 
 
     /*getProposalInfo: Devuelve los datos asociados a una propuesta dado su identificador.
     Solo se puede ejecutar si la votaci ́on est ́a abierta. */
     
-    function getProposalInfo()
+    function getProposalInfo() public VotingOpen returns (t_proposal memory)
     {
-        
+       return _proposals[i]; 
     }
     
     
-    /* stake: recibe un identificador de propuesta y la cantidad de votos que se quieren de-
+    /* stake(): recibe un identificador de propuesta y la cantidad de votos que se quieren de-
     positar y realiza el voto del participante que invoca esta funci ́on. Calcula los tokens
     necesarios para depositar los votos que se van a depositar y comprueba que el parti-
     cipante ha cedido (con approve) el uso de esos tokens a la cuenta del contrato de la
@@ -156,9 +212,11 @@ contract quadraticVoting is Ownable{
     con el contrato ERC20 antes de ejecutar esta funci ́on; el contrato ERC20 se puede
     obtener con getERC20).*/
     
-    function stake()
+    function stake(uint proposalId, uint votes) public
     {
-        
+        uint currentVotes = _proposals[proposalId]._voters[msg.sender()];
+        uint price = mul(currentVotes + votes, currentVotes + votes) - mul(currentVotes);
+        token.approve(msg.sender(), price);
     }
 
 
