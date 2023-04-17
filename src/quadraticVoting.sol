@@ -24,6 +24,7 @@ contract quadraticVoting is Ownable{
         string title;
         string description; 
         uint budget;
+        uint voteAmount;
         uint currentBudget;
         bool aproved;
         address proposalAddress;
@@ -218,8 +219,10 @@ contract quadraticVoting is Ownable{
         uint price = mul(currentVotes + votes, currentVotes + votes) - mul(currentVotes, currentVotes);
         //Not sure about approving the allowance and then transfering
         token.transferFrom(msg.sender(), address(this), price);
-        _proposals[proposalId]._voters[msg.sender()] = votes;
+        _proposals[proposalId]._voters[msg.sender()] += votes;
+        _proposals[proposalId].voteAmount += votes;
         _proposals[proposalId]._votersId[_proposals[proposalId]._votersId.length] = msg.sender();
+        _checkAndExecuteProposal(proposalId, _proposals[proposalId].voteAmount);
     }
 
 
@@ -240,6 +243,8 @@ contract quadraticVoting is Ownable{
         );
         uint price = mul(currentVotes, currentVotes) - mul(currentVotes - votes, currentVotes - votes);
         token.transferFrom(address(this), msg.sender(), price);
+        _proposals[proposalId]._voters[msg.sender()] -= votes;
+        _proposals[proposalId].voteAmount -= votes;
     }
     
 
@@ -256,13 +261,13 @@ contract quadraticVoting is Ownable{
     cantidad m ́axima de gas que puede utilizar para evitar que la propuesta pueda consumir
     todo el gas de la transacci ́on. Esta llamada debe consumir como m ́aximo 100000 gas. */
     
-    function _checkAndExecuteProposal(uint proposalId) notSignalingProposal
+    function _checkAndExecuteProposal(uint proposalId, uint votes) notSignalingProposal
     {
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
         uint threshold = (0,2 + _proposals[proposalId].budget/totalBudget) * participants + getPendingProposals().length;
         if (_proposals[proposalId].currentBudget >= _proposals[proposalId].budget) {
             address(_proposals[proposalId].proposal).transfer(_proposals[proposalId].currentBudget * tokenPrice);
-            _proposals[proposalId].proposal.executeProposal();
+            _proposals[proposalId].proposal.executeProposal(proposalId, votes, _proposals[proposalId].currentBudget);
             token.burn(address(this), _proposals[proposalId].currentBudget);
         }     
     }
@@ -289,7 +294,7 @@ contract quadraticVoting is Ownable{
         returnFunds(getPendingProposals());
         //All signaling proposals are approved
         for (uint256 i = 0; i < _proposals.length; i++) {
-            _proposals[proposalId].proposal.executeProposal();
+            _proposals[proposalId].proposal.executeProposal(_proposals[proposalId], _proposals[proposalId].voteAmount, _proposals[proposalId].currentBudget);
         }
         returnFunds(getSignalingProposals());
         //Not invested contracts budget is transfered to owners account
