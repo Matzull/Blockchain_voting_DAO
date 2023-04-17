@@ -71,7 +71,7 @@ contract quadraticVoting is Ownable{
                 msg.value() >= tokenPrice,
                 "Not enough Ether to purchase 1 token" 
         );
-        token.mint(msg.sender(), msg.value());
+        token.mint(msg.sender(), msg.value() / tokenPrice);
     }
 
 
@@ -95,7 +95,7 @@ contract quadraticVoting is Ownable{
 
     function addProposal(string title, string description, uint budget, address proposalAddress) public VotingClosed returns (uint)
     {
-        _proposals[numberOfProposals] = new t_proposal(title, description, budget, false, proposalAddress, IExecutableProposal(proposal));
+        _proposals[numberOfProposals] = new t_proposal(title, description, budget, false, proposalAddress, IExecutableProposal(proposalAddress));
         return numberOfProposals++;
     }
 
@@ -115,7 +115,7 @@ contract quadraticVoting is Ownable{
 
     function buyTokens() public payable
     {
-        token.mint(msg.sender(), msg.value());
+        token.mint(msg.sender(), msg.value() / tokenPrice);
     }
 
 
@@ -124,7 +124,7 @@ contract quadraticVoting is Ownable{
     
     function sellTokens(uint amount) public
     {
-        token.burn(msg.sender(), amount);
+        token.burn(msg.sender(), amount / tokenPrice);
     }
 
 
@@ -266,8 +266,7 @@ contract quadraticVoting is Ownable{
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
         uint threshold = (0,2 + _proposals[proposalId].budget/totalBudget) * participants + getPendingProposals().length;
         if (_proposals[proposalId].currentBudget >= _proposals[proposalId].budget) {
-            address(_proposals[proposalId].proposal).transfer(_proposals[proposalId].currentBudget * tokenPrice);
-            _proposals[proposalId].proposal.executeProposal(proposalId, votes, _proposals[proposalId].currentBudget);
+            _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].currentBudget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].currentBudget);
             token.burn(address(this), _proposals[proposalId].currentBudget);
         }     
     }
@@ -298,7 +297,7 @@ contract quadraticVoting is Ownable{
         }
         returnFunds(getSignalingProposals());
         //Not invested contracts budget is transfered to owners account
-        token.transfer(address(this), totalAmount);
+        token.transfer(owner, totalAmount);
         //isVotingOpen => False
         isVotingOpen = false;
     }
