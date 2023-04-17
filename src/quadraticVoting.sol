@@ -26,22 +26,27 @@ contract quadraticVoting is Ownable{
         uint budget;
         uint voteAmount;
         uint currentBudget;
-        bool aproved;
-        address proposalAddress;
         mapping (address => uint) _voters;
         address[] _votersId;
         IExecutableProposal proposal;
+        bool valid;
     }
 
-    t_proposal[] _proposals;
-
     uint numberOfProposals;
+    mapping (uint => t_proposal) _proposals;//Maps a proposal to its id
+    //The following arrays keep track of the corresponding proposal ids in the _proposals mapping 
+    uint[] _SignalingProposals;
+    uint[] _ApprovedProposals;
+    uint[] _PendingProposals;
+
+    uint _numberOfParticipants;
+    mapping (address => address) _participants;    
 
     constructor()
     {
         token = new Stoken(tokenAmount);
         owner(msg.sender());
-        numberOfProposals = 1;
+        numberOfProposals = 1;//We start in one to keep 0 as the error code
     }
 
     
@@ -72,6 +77,8 @@ contract quadraticVoting is Ownable{
                 "Not enough Ether to purchase 1 token" 
         );
         token.mint(msg.sender(), msg.value() / tokenPrice);
+        _participants[msg.sender()] = msg.sender();
+        _numberOfParticipants++;
     }
 
 
@@ -81,7 +88,8 @@ contract quadraticVoting is Ownable{
     
     function removeParticipant()
     {
-        
+        _participants[msg.sender()] = 0;
+        _numberOfParticipants--;
     }
 
 
@@ -95,7 +103,14 @@ contract quadraticVoting is Ownable{
 
     function addProposal(string title, string description, uint budget, address proposalAddress) public VotingClosed returns (uint)
     {
-        _proposals[numberOfProposals] = new t_proposal(title, description, budget, false, proposalAddress, IExecutableProposal(proposalAddress));
+        _proposals[numberOfProposals] = new t_proposal(title, description, budget, 0, 0, IExecutableProposal(proposalAddress), true);
+        if (budget == 0) {//If budget is 0 it is a signaling proposal
+            //We save the signaling proposal id into _SignalingProposals array
+            _SignalingProposals[_SignalingProposals.length] = numberOfProposals;
+        } else {
+            //We save the proposal id into _PendingProposals array
+            _PendingProposals[_SignalingProposals.length] = numberOfProposals;
+        }
         return numberOfProposals++;
     }
 
@@ -105,9 +120,10 @@ contract quadraticVoting is Ownable{
     propuesta. No se pueden cancelar propuestas ya aprobadas. Los tokens recibidos hasta
     el momento para votar la propuesta deben ser devueltos a sus propietarios.*/
 
-    function cancelProposal(uint id) OnlyCreator
+    function cancelProposal(uint proposalId) OnlyCreator
     {
-        
+        returnFunds(_proposals[proposalId]);
+        _proposals[proposalId].valid = false;
     }
 
     /*buyTokens(): Esta funci ́on permite a un participante ya inscrito comprar m ́as tokens para
@@ -144,15 +160,7 @@ contract quadraticVoting is Ownable{
 
     function getPendingProposals() public VotingOpen returns (uint[] memory) 
     {
-        uint[] memory ret = new uint[](0);
-
-        for (uint i = 1; i < _proposals.length + 1; i++) {//We use length + 1 because proposals id start at 1
-            if(!_proposals[i].aproved)
-            {
-                ret.push(i);
-            }
-        }
-        return ret;
+        return _PendingProposals;
     }
 
     /*getApprovedProposals(): Devuelve un array con los identificadores de todas las propues-
@@ -160,15 +168,7 @@ contract quadraticVoting is Ownable{
 
     function getApprovedProposals() public VotingOpen returns (uint[] memory)
     {
-        uint[] memory ret = new uint[](0);
-
-        for (uint i = 1; i < _proposals.length + 1; i++) {//We use length + 1 because proposals id start at 1
-            if(_proposals[i].aproved)
-            {
-                ret.push(i);
-            }
-        }
-        return ret;
+        return _ApprovedProposals;
     }
 
 
@@ -178,24 +178,16 @@ contract quadraticVoting is Ownable{
     
     function getSignalingProposals() public VotingOpen returns (uint[] memory)
     {
-        uint[] memory ret = new uint[](0);
-
-        for (uint i = 1; i < _proposals.length + 1; i++) {//We use length + 1 because proposals id start at 1
-            if(_proposals[i].budget == 0)
-            {
-                ret.push(i);
-            }
-        }
-        return ret;
+        return _SignalingProposals;
     }
 
 
     /*getProposalInfo(): Devuelve los datos asociados a una propuesta dado su identificador.
     Solo se puede ejecutar si la votaci ́on est ́a abierta. */
     
-    function getProposalInfo() public VotingOpen returns (t_proposal memory)
+    function getProposalInfo(uint proposalId) public VotingOpen returns (t_proposal memory)
     {
-       return _proposals[i]; 
+       return _proposals[proposalId]; 
     }
     
     
@@ -217,11 +209,11 @@ contract quadraticVoting is Ownable{
     {
         uint currentVotes = _proposals[proposalId]._voters[msg.sender()];
         uint price = mul(currentVotes + votes, currentVotes + votes) - mul(currentVotes, currentVotes);
-        //Not sure about approving the allowance and then transfering
+        
         token.transferFrom(msg.sender(), address(this), price);
         _proposals[proposalId]._voters[msg.sender()] += votes;
         _proposals[proposalId].voteAmount += votes;
-        _proposals[proposalId]._votersId[_proposals[proposalId]._votersId.length] = msg.sender();
+        _proposals[proposalId]._votersId[_proposals[proposalId]._votersId.length] = msg.sender();//If the voter already exists it creates a new id for the same voter
         _checkAndExecuteProposal(proposalId, _proposals[proposalId].voteAmount);
     }
 
@@ -264,10 +256,11 @@ contract quadraticVoting is Ownable{
     function _checkAndExecuteProposal(uint proposalId, uint votes) notSignalingProposal
     {
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
-        uint threshold = (0,2 + _proposals[proposalId].budget/totalBudget) * participants + getPendingProposals().length;
-        if (_proposals[proposalId].currentBudget >= _proposals[proposalId].budget) {
-            _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].currentBudget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].currentBudget);
-            token.burn(address(this), _proposals[proposalId].currentBudget);
+        uint threshold = (0,2 + _proposals[proposalId].budget/totalBudget) * _numberOfParticipants + getPendingProposals().length;
+        if (votes >= threshold && totalBudget >= _proposals[proposalId].budget) {
+            _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
+            token.burn(address(this), _proposals[proposalId].budget);
+            totalBudget -= _proposals[proposalId].budget;
         }     
     }
 
@@ -292,25 +285,31 @@ contract quadraticVoting is Ownable{
         //Not approved proposals are discarded
         returnFunds(getPendingProposals());
         //All signaling proposals are approved
-        for (uint256 i = 0; i < _proposals.length; i++) {
-            _proposals[proposalId].proposal.executeProposal(_proposals[proposalId], _proposals[proposalId].voteAmount, _proposals[proposalId].currentBudget);
+        uint[] memory proposalsIds = getSignalingProposals();
+        for (uint256 i = 0; i < proposalsIds.length; i++) {
+            _proposals[proposalsIds[i]].proposal.executeProposal(proposalsIds[i], _proposals[proposalsIds[i]].voteAmount, _proposals[proposalsIds[i]].currentBudget);
         }
         returnFunds(getSignalingProposals());
         //Not invested contracts budget is transfered to owners account
         token.transfer(owner, totalAmount);
         //isVotingOpen => False
         isVotingOpen = false;
+        freeAll();
     }
 
     /*returnFunds(): Funcion que devuelve los fondos de una propuesta a sus votantes.*/
-    function returnFunds(t_proposal memory proposals)
+    function returnFunds(uint[] memory proposalsId)
     {
-        for (uint proposal_i = 0; proposal_i < proposals.length; proposal_i++) {//Iterate through proposals
+        for (uint proposal_i = 0; proposal_i < proposalsId.length; proposal_i++) {//Iterate through proposals
             for (uint256 voter_i = 0; voter_i < array.length; voter_i++) {//Iterate through voters of proposal_i
-                address payable voter_address = proposals[proposal_i]._votersId[voter_i];//Get address of voter_i
+                address payable voter_address = _proposals[proposalsId[proposal_i]]._votersId[voter_i];//Get address of voter_i
                 //Pay voter_address.n_votes^2 to voter_address
-                token.transfer(voter_address, mul(proposals[proposal_i]._voters[voter_address], proposals[proposal_i]._voters[voter_address]));
+                token.transfer(voter_address, mul(_proposals[proposalsId[proposal_i]]._voters[voter_address], _proposals[proposalsId[proposal_i]]._voters[voter_address]));
             }
         }
+    }
+
+    function freeAll(){
+        //TODO Clear all the arrays previosly created
     }
 }
