@@ -29,24 +29,25 @@ contract quadraticVoting is Ownable{
         mapping (address => uint) _voters;
         address[] _votersId;
         IExecutableProposal proposal;
-        bool valid;
+        bool valid; //This field is true if the proposal has been canceled or approved
     }
 
     uint numberOfProposals;
     mapping (uint => t_proposal) _proposals;//Maps a proposal to its id
     //The following arrays keep track of the corresponding proposal ids in the _proposals mapping 
     uint[] _SignalingProposals;
-    uint[] _ApprovedProposals;
+    uint[] _ApprovedProposals;//Proposals in this array are also marked as (valid => false)
     uint[] _PendingProposals;
 
     uint _numberOfParticipants;
     mapping (address => address) _participants;    
 
-    constructor()
+    constructor() payable
     {
-        token = new Stoken(tokenAmount);
+        token = new Stoken(0);
         owner(msg.sender());
         numberOfProposals = 1;//We start in one to keep 0 as the error code
+        totalBudget += msg.value();
     }
 
     
@@ -140,6 +141,8 @@ contract quadraticVoting is Ownable{
     
     function sellTokens(uint amount) public
     {
+        require(token.balanceOf(msg.sender()) >= amount, "Not enough tokens to sell");
+        payable(msg.sender()).transfer(amount);
         token.burn(msg.sender(), amount / tokenPrice);
     }
 
@@ -284,14 +287,14 @@ contract quadraticVoting is Ownable{
     {
         //Not approved proposals are discarded
         returnFunds(getPendingProposals());
-        //All signaling proposals are approved
+        //All signaling proposals are executed
         uint[] memory proposalsIds = getSignalingProposals();
         for (uint256 i = 0; i < proposalsIds.length; i++) {
             _proposals[proposalsIds[i]].proposal.executeProposal(proposalsIds[i], _proposals[proposalsIds[i]].voteAmount, _proposals[proposalsIds[i]].currentBudget);
         }
         returnFunds(getSignalingProposals());
         //Not invested contracts budget is transfered to owners account
-        token.transfer(owner, totalAmount);
+        payable(owner).transfer(totalBudget);
         //isVotingOpen => False
         isVotingOpen = false;
         freeAll();
@@ -301,6 +304,9 @@ contract quadraticVoting is Ownable{
     function returnFunds(uint[] memory proposalsId)
     {
         for (uint proposal_i = 0; proposal_i < proposalsId.length; proposal_i++) {//Iterate through proposals
+            if (!_proposals[proposalsId[proposal_i]].valid) {
+                continue;
+            }
             for (uint256 voter_i = 0; voter_i < array.length; voter_i++) {//Iterate through voters of proposal_i
                 address payable voter_address = _proposals[proposalsId[proposal_i]]._votersId[voter_i];//Get address of voter_i
                 //Pay voter_address.n_votes^2 to voter_address
