@@ -6,15 +6,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Stoken is ERC20, Ownable {
     
-    constructor(uint256 tokenAmount) ERC20("SmartTokenX", "STX") Ownable() {
-        _mint(msg.sender, tokenAmount * (10 ** uint256(decimals())));
+    constructor(uint256 tokens) ERC20("SmartTokenX", "STX") Ownable() {
+        _mint(msg.sender, tokens);
     }
 
-    function mint(address to, uint256 amount) public onlyOwner {
-        _mint(to, amount * (10 ** uint256(decimals())));
+    function mint(address to, uint256 tokens) public onlyOwner {
+        _mint(to, tokens);
     }
 
-    function burn(address from, uint256 amount) public onlyOwner {
-        _burn(from, amount * (10 ** uint256(decimals())));
+    function burn(address from, uint256 tokens) public onlyOwner {
+        _burn(from, tokens);
     }
 }

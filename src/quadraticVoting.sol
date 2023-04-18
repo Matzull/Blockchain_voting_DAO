@@ -41,7 +41,7 @@ contract quadraticVoting is Ownable{
     uint[] _PendingProposals;
 
     uint _numberOfParticipants;
-    mapping (address => address) _participants;    
+    mapping (address => address) _participants;
 
     modifier onlyParticipant() {
         require(_participants[msg.sender] == _participants[msg.sender], "Not a participant");
@@ -102,7 +102,7 @@ contract quadraticVoting is Ownable{
                 msg.value >= tokenPrice,
                 "Not enough Ether to purchase 1 token" 
         );
-        token.mint(msg.sender, msg.value / tokenPrice);
+        token.mint(msg.sender, (msg.value * (10 ** 18)) / tokenPrice);
         _participants[msg.sender] = msg.sender;
         _numberOfParticipants++;
     }
@@ -178,7 +178,7 @@ contract quadraticVoting is Ownable{
 
     function buyTokens() public onlyParticipant payable
     {
-        token.mint(msg.sender, msg.value / tokenPrice);
+        token.mint(msg.sender, (msg.value * (10 ** 18)) / tokenPrice);
     }
 
 
@@ -188,8 +188,8 @@ contract quadraticVoting is Ownable{
     function sellTokens(uint amount) public onlyParticipant
     {
         require(token.balanceOf(msg.sender) >= amount, "Not enough tokens to sell");
-        payable(msg.sender).transfer(amount);
-        token.burn(msg.sender, amount / tokenPrice);
+        payable(msg.sender).transfer((amount / (10 ** 18)) * tokenPrice);
+        token.burn(msg.sender, amount);//TODO seller wants to input tokens
     }
 
 
@@ -197,7 +197,7 @@ contract quadraticVoting is Ownable{
     para gestionar tokens. De esta forma, los participantes pueden utilizarlo para operar
     con los tokens comprados (transferirlos, cederlos, etc.).*/
 
-    function getERC20() public returns(address)
+    function getERC20() public view returns(address)
     {
        return address(token);
     }
@@ -207,7 +207,7 @@ contract quadraticVoting is Ownable{
     tas de financiaci ́on pendientes de aprobar. Solo se puede ejecutar si la votaci ́on est ́a
     abierta.*/
 
-    function getPendingProposals() public VotingOpen returns (uint[] memory) 
+    function getPendingProposals() public view VotingOpen returns (uint[] memory) 
     {
         return _PendingProposals;
     }
@@ -215,7 +215,7 @@ contract quadraticVoting is Ownable{
     /*getApprovedProposals(): Devuelve un array con los identificadores de todas las propues-
     tas de financiaci ́on aprobadas. Solo se puede ejecutar si la votaci ́on est ́a abierta. */
 
-    function getApprovedProposals() public VotingOpen returns (uint[] memory)
+    function getApprovedProposals() public view VotingOpen returns (uint[] memory)
     {
         return _ApprovedProposals;
     }
@@ -225,7 +225,7 @@ contract quadraticVoting is Ownable{
     puestas de signaling (las que se han creado con presupuesto cero). Solo se puede ejecutar
     si la votaci ́on est ́a abierta. */
     
-    function getSignalingProposals() public VotingOpen returns (uint[] memory)
+    function getSignalingProposals() public view VotingOpen returns (uint[] memory)
     {
         return _SignalingProposals;
     }
@@ -234,7 +234,7 @@ contract quadraticVoting is Ownable{
     /*getProposalInfo(): Devuelve los datos asociados a una propuesta dado su identificador.
     Solo se puede ejecutar si la votaci ́on est ́a abierta. */
     
-    function getProposalInfo(uint proposalId) internal VotingOpen returns (t_proposal storage)
+    function getProposalInfo(uint proposalId) internal view VotingOpen returns (t_proposal storage)
     {   
        return _proposals[proposalId]; 
     }
@@ -302,13 +302,14 @@ contract quadraticVoting is Ownable{
     cantidad m ́axima de gas que puede utilizar para evitar que la propuesta pueda consumir
     todo el gas de la transacci ́on. Esta llamada debe consumir como m ́aximo 100000 gas. */
     
-    function _checkAndExecuteProposal(uint proposalId, uint votes) public notSignalingProposal(proposalId)
+    function _checkAndExecuteProposal(uint proposalId, uint votes) internal notSignalingProposal(proposalId)
     {
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
-        uint threshold = (0.2 + _proposals[proposalId].budget / totalBudget) * _numberOfParticipants + getPendingProposals().length;
-        if (votes >= threshold && totalBudget >= _proposals[proposalId].budget) {
+        //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
+        uint threshold = (20 + _proposals[proposalId].budget * 100 / totalBudget) * _numberOfParticipants + (getPendingProposals().length * 100);
+        if (votes * 100 >= threshold && totalBudget >= _proposals[proposalId].budget) {
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
-            token.burn(address(this), _proposals[proposalId].budget);
+            token.burn(address(this), (_proposals[proposalId].budget * (10 ** 18)) / tokenPrice);
             totalBudget -= _proposals[proposalId].budget;
         }     
     }
@@ -340,7 +341,7 @@ contract quadraticVoting is Ownable{
         }
         returnFunds(getSignalingProposals());
         //Not invested contracts budget is transfered to owners account
-        payable(owner).transfer(totalBudget);
+        payable(owner()).transfer(totalBudget);
         //isVotingOpen => False
         isVotingOpen = false;
         freeAll();
@@ -354,7 +355,7 @@ contract quadraticVoting is Ownable{
                 continue;
             }
             for (uint256 voter_i = 0; voter_i < _proposals[proposalsId[proposal_i]]._votersId.length; voter_i++) {//Iterate through voters of proposal_i
-                address payable voter_address = _proposals[proposalsId[proposal_i]]._votersId[voter_i];//Get address of voter_i
+                address payable voter_address = payable(_proposals[proposalsId[proposal_i]]._votersId[voter_i]);//Get address of voter_i
                 //Pay voter_address.n_votes^2 to voter_address
                 token.transfer(voter_address, (_proposals[proposalsId[proposal_i]]._voters[voter_address] * _proposals[proposalsId[proposal_i]]._voters[voter_address]));
             }
