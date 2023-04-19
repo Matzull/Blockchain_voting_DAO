@@ -18,7 +18,7 @@ contract quadraticVoting is Ownable{
     bool private isVotingOpen;
 
     Stoken private token;
-
+    event Print(uint proposalId, uint budget);
     struct t_proposal
     {
         string title;
@@ -64,7 +64,8 @@ contract quadraticVoting is Ownable{
     }
 
     modifier notSignalingProposal(uint proposalId) {
-        require(_proposals[proposalId].budget == 0, "Must be a signaling proposal");
+        emit Print(proposalId, _proposals[proposalId].budget);
+        require(_proposals[proposalId].budget != 0, "Must be a financial proposal");
         _;
     }
 
@@ -151,10 +152,11 @@ contract quadraticVoting is Ownable{
 
         if (_budget == 0) {//If budget is 0 it is a signaling proposal
             //We save the signaling proposal id into _SignalingProposals array
-            _SignalingProposals[_SignalingProposals.length] = numberOfProposals;
+            _SignalingProposals.push(numberOfProposals);
         } else {
             //We save the proposal id into _PendingProposals array
-            _PendingProposals[_SignalingProposals.length] = numberOfProposals;
+            // _PendingProposals[_SignalingProposals.length] =  numberOfProposals;
+            _PendingProposals.push(numberOfProposals);
         }
         return numberOfProposals++;
     }
@@ -234,9 +236,9 @@ contract quadraticVoting is Ownable{
     /*getProposalInfo(): Devuelve los datos asociados a una propuesta dado su identificador.
     Solo se puede ejecutar si la votaci ́on est ́a abierta. */
     
-    function getProposalInfo(uint proposalId) internal view VotingOpen returns (t_proposal storage)
+    function getProposalInfo(uint proposalId) public view VotingOpen returns (uint)
     {   
-       return _proposals[proposalId]; 
+       return _proposals[proposalId].budget; 
     }
     
     
@@ -262,7 +264,7 @@ contract quadraticVoting is Ownable{
         token.transferFrom(msg.sender, address(this), price);
         _proposals[proposalId]._voters[msg.sender] += votes;
         _proposals[proposalId].voteAmount += votes;
-        _proposals[proposalId]._votersId[_proposals[proposalId]._votersId.length] = msg.sender;//If the voter already exists it creates a new id for the same voter
+        _proposals[proposalId]._votersId.push(msg.sender);//If the voter already exists it creates a new id for the same voter
         _checkAndExecuteProposal(proposalId, _proposals[proposalId].voteAmount);
     }
 
