@@ -65,7 +65,8 @@ contract quadraticVoting is Ownable{
 
     modifier notSignalingProposal(uint proposalId) {
         emit Print(proposalId, _proposals[proposalId].budget);
-        require(_proposals[proposalId].budget != 0, "Must be a financial proposal");
+        uint budget = _proposals[proposalId].budget;
+        require(budget != 0, "Must be a financial proposal");
         _;
     }
 
@@ -308,7 +309,7 @@ contract quadraticVoting is Ownable{
     {
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
         //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
-        uint threshold = (20 + _proposals[proposalId].budget * 100 / totalBudget) * _numberOfParticipants + (getPendingProposals().length * 100);
+        uint threshold = (20 + (_proposals[proposalId].budget * 100) / (totalBudget + 1)) * _numberOfParticipants + (getPendingProposals().length * 100);
         if (votes * 100 >= threshold && totalBudget >= _proposals[proposalId].budget) {
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
             token.burn(address(this), (_proposals[proposalId].budget * (10 ** 18)) / tokenPrice);
