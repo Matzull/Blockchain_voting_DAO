@@ -64,17 +64,14 @@ contract quadraticVoting is Ownable{
     }
 
     modifier notSignalingProposal(uint proposalId) {
-        emit Print(proposalId, _proposals[proposalId].budget);
-        uint budget = _proposals[proposalId].budget;
-        require(budget != 0, "Must be a financial proposal");
+        require(_proposals[proposalId].budget != 0, "Must be a financial proposal");
         _;
     }
 
-    constructor() Ownable() payable
+    constructor() Ownable()
     {
         token = new Stoken(0);
         numberOfProposals = 1;//We start in one to keep 0 as the error code
-        totalBudget += msg.value;
     }
 
     
@@ -260,12 +257,16 @@ contract quadraticVoting is Ownable{
     function stake(uint proposalId, uint votes) public onlyParticipant
     {
         uint currentVotes = _proposals[proposalId]._voters[msg.sender];
-        uint price = (currentVotes + votes) * (currentVotes + votes) - (currentVotes * currentVotes);
+        uint price = (currentVotes + votes) * (currentVotes + votes) - (currentVotes * currentVotes);//price in tokens without decimals()
         
-        token.transferFrom(msg.sender, address(this), price);
+        token.transferFrom(msg.sender, address(this), (price * (10 ** 18)));//we add the decimals for the transfer
         _proposals[proposalId]._voters[msg.sender] += votes;
         _proposals[proposalId].voteAmount += votes;
-        _proposals[proposalId]._votersId.push(msg.sender);//If the voter already exists it creates a new id for the same voter
+        _proposals[proposalId].currentBudget += price * tokenPrice;
+        if(_proposals[proposalId]._voters[msg.sender] != votes)//If we have just created the voter
+        {
+            _proposals[proposalId]._votersId.push(msg.sender);//Add the voter to the votersId array
+        }
         _checkAndExecuteProposal(proposalId, _proposals[proposalId].voteAmount);
     }
 
@@ -286,7 +287,8 @@ contract quadraticVoting is Ownable{
                 "Not enoughVotes to withdraw"
         );
         uint price = (currentVotes * currentVotes) - (currentVotes - votes) * (currentVotes - votes);
-        token.transferFrom(address(this), msg.sender, price);
+        token.transferFrom(address(this), msg.sender, (price * (10 ** 18)));
+        _proposals[proposalId].currentBudget -= price * tokenPrice;
         _proposals[proposalId]._voters[msg.sender] -= votes;
         _proposals[proposalId].voteAmount -= votes;
     }
@@ -312,7 +314,9 @@ contract quadraticVoting is Ownable{
         uint threshold = (20 + (_proposals[proposalId].budget * 100) / (totalBudget + 1)) * _numberOfParticipants + (getPendingProposals().length * 100);
         if (votes * 100 >= threshold && totalBudget >= _proposals[proposalId].budget) {
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
-            token.burn(address(this), (_proposals[proposalId].budget * (10 ** 18)) / tokenPrice);
+            uint debug = (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice;
+            uint debug2 = token.balanceOf(address(this));
+            token.burn(address(this), (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice);
             totalBudget -= _proposals[proposalId].budget;
         }     
     }
