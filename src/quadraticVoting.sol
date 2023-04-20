@@ -125,16 +125,7 @@ contract quadraticVoting is Ownable{
     plemente el interfaz ExecutableProposal, que ser ́a el receptor del dinero presupuestado
     en caso de ser aprobada la propuesta. Debe devolver un identificador de la propuesta
     creada.*/
-    /*string title;
-        string description; 
-        uint budget;
-        uint voteAmount;
-        address creator;
-        uint currentBudget;
-        mapping (address => uint) _voters;
-        address[] _votersId;
-        IExecutableProposal proposal;
-        bool valid; //This field is true */
+
     function addProposal(string calldata _title, string calldata _description, uint _budget, address _proposalAddress) public VotingOpen onlyParticipant returns (uint)
     {
         // _proposals[numberOfProposals] = new t_proposal(title, description, budget, 0, msg.sender, 0, proposal : IExecutableProposal(proposalAddress), valid : true);
@@ -312,7 +303,7 @@ contract quadraticVoting is Ownable{
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
         //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
         uint threshold = (20 + (_proposals[proposalId].budget * 100) / (totalBudget + 1)) * _numberOfParticipants + (getPendingProposals().length * 100);
-        if (votes * 100 >= threshold && totalBudget >= _proposals[proposalId].budget) {
+        if (votes * 100 >= threshold && totalBudget >= _proposals[proposalId].budget) {//TODO totalBudget should only consider currentbudget and publicly available budget
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
             uint debug = (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice;
             uint debug2 = token.balanceOf(address(this));
@@ -364,7 +355,7 @@ contract quadraticVoting is Ownable{
             for (uint256 voter_i = 0; voter_i < _proposals[proposalsId[proposal_i]]._votersId.length; voter_i++) {//Iterate through voters of proposal_i
                 address payable voter_address = payable(_proposals[proposalsId[proposal_i]]._votersId[voter_i]);//Get address of voter_i
                 //Pay voter_address.n_votes^2 to voter_address
-                token.transfer(voter_address, (_proposals[proposalsId[proposal_i]]._voters[voter_address] * _proposals[proposalsId[proposal_i]]._voters[voter_address]));
+                token.transfer(voter_address, (_proposals[proposalsId[proposal_i]]._voters[voter_address] * _proposals[proposalsId[proposal_i]]._voters[voter_address]));//TODO multiply decimals()
             }
         }
     }
