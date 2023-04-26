@@ -3,7 +3,7 @@ pragma solidity > 0.8.0;
 
 import "./token_ERC20.sol";
 import "./IExecutableProposal.sol";
-import "./safeMath.sol";
+import "./Libraries/safeMath.sol";
 
 /*En la creacion de este contrato se debe proporcionar el precio en Wei de cada token y
 el numero maximo de tokens que se van a poner a la venta para votaciones. Entre otras
