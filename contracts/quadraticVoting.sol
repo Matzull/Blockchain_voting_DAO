@@ -180,7 +180,7 @@ contract quadraticVoting is Ownable{
     {
         require(token.balanceOf(msg.sender) >= amount, "Not enough tokens to sell");
         payable(msg.sender).transfer((amount / (10 ** 18)) * tokenPrice);
-        token.burn(msg.sender, amount);//TODO seller wants to input tokens
+        token.burn(msg.sender, amount);//TODO seller wants to input number of tokens
     }
 
 
