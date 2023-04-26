@@ -16,7 +16,7 @@ async function main() {
   await quadraticVoting.deployed();
 
   console.log(
-    "Contract deployed: ", quadraticVoting
+    "Quadratic voting deployed to:", quadraticVoting
   );
 }
 
