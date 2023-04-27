@@ -137,7 +137,7 @@ contract quadraticVoting is Ownable{
         p.creator = msg.sender;
         p.currentBudget = 0;
         p.proposal = IExecutableProposal(_proposalAddress);
-        p.valid = true;
+        p.valid = false;
 
         if (_budget == 0) {//If budget is 0 it is a signaling proposal
             //We save the signaling proposal id into _SignalingProposals array
@@ -178,9 +178,10 @@ contract quadraticVoting is Ownable{
     
     function sellTokens(uint amount) public onlyParticipant
     {
-        require(token.balanceOf(msg.sender) >= amount, "Not enough tokens to sell");
-        payable(msg.sender).transfer((amount / (10 ** 18)) * tokenPrice);
-        token.burn(msg.sender, amount);//TODO seller wants to input number of tokens
+        uint tokens = (amount / (10 ** 18)) * tokenPrice;
+        require(token.balanceOf(msg.sender) >= tokens, "Not enough tokens to sell");
+        payable(msg.sender).transfer(tokens);
+        token.burn(msg.sender, tokens);//TODO seller wants to input number of tokens
     }
 
 
@@ -245,7 +246,7 @@ contract quadraticVoting is Ownable{
     con el contrato ERC20 antes de ejecutar esta funci ́on; el contrato ERC20 se puede
     obtener con getERC20).*/
     
-    function stake(uint proposalId, uint votes) public onlyParticipant
+    function stake(uint proposalId, uint votes) public onlyParticipant proposalNotApproved(proposalId)
     {
         uint currentVotes = _proposals[proposalId]._voters[msg.sender];
         uint price = (currentVotes + votes) * (currentVotes + votes) - (currentVotes * currentVotes);//price in tokens without decimals()
@@ -304,14 +305,12 @@ contract quadraticVoting is Ownable{
         //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
         uint threshold = (20 + (_proposals[proposalId].budget * 100) / (totalBudget + 1)) * _numberOfParticipants + (getPendingProposals().length * 100);
         if (votes * 100 >= threshold && totalBudget >= _proposals[proposalId].budget) {//TODO totalBudget should only consider currentbudget and publicly available budget
-            uint debug = (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice;
-            uint debug2 = token.balanceOf(address(this));
             token.burn(address(this), (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice);
             totalBudget -= _proposals[proposalId].budget;
             //TODO if a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
-            // valid needs to be changed to false.
             //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
+            _proposals[proposalId].valid = true;//We approve the proposal
         }     
     }
 
@@ -357,8 +356,8 @@ contract quadraticVoting is Ownable{
             }
             for (uint256 voter_i = 0; voter_i < _proposals[proposalsId[proposal_i]]._votersId.length; voter_i++) {//Iterate through voters of proposal_i
                 address payable voter_address = payable(_proposals[proposalsId[proposal_i]]._votersId[voter_i]);//Get address of voter_i
-                //Pay voter_address.n_votes^2 to voter_address
-                token.transfer(voter_address, (_proposals[proposalsId[proposal_i]]._voters[voter_address] * _proposals[proposalsId[proposal_i]]._voters[voter_address]));//TODO multiply decimals()
+                //Pay voter_address.n_votes^2 to voter_address (amount / ) 
+                token.transfer(voter_address, (_proposals[proposalsId[proposal_i]]._voters[voter_address] * _proposals[proposalsId[proposal_i]]._voters[voter_address]) * (10 ** 18) * tokenPrice);
             }
         }
     }
