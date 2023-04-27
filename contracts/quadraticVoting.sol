@@ -362,6 +362,27 @@ contract quadraticVoting is Ownable{
             }
         }
     }
+    /* The closeVoting function will always be called before any single requestFundsReturn.
+    This means that all signaling proposals have already been executed
+    Question: getSignalingProposals() and getPendingProposals is only callable when voting is open - Why?
+    If I want to return the funds, I need to iterate over the proposals to return the funds to the voters, cannot iterate
+    if they are gone.
+
+    "You should foresee a specific contract state in which the voting process is not open but that allows 
+    the execution of the tasks related to closeVoting"
+
+    Possible solution: Create another array with proposals that are archived:
+    Put signaling and unapproved proposals in the archive so new voting can begin, the archive can be kept for
+    a determined amount of time for voters to take their money back, after that the archive is also deleted for saving space
+    
+    Extra thoughts: If I'm worried about DOS by creation of a large amount of voters, I should be worried about DOS by
+    creation of a large amount of proposals as well (especially signaling). The deletion of signaling proposals can be handled
+    by using pops of the signalingProposals array. This solution is a version of resumable function where there is no
+    saving index, only pop is continously used.
+
+    */
+    //function requestFundsReturn()
+
 
     function freeAll() internal {
         //TODO Clear all the arrays previosly created
