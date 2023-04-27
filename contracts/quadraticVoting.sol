@@ -310,9 +310,7 @@ contract quadraticVoting is Ownable{
             totalBudget -= _proposals[proposalId].budget;
             //TODO if a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
             // valid needs to be changed to true.
-            _proposals[proposalId].valid = true;
-            _PendingProposals.pop()
-            
+            _proposals[proposalId].valid = true;            
             //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
         }     
