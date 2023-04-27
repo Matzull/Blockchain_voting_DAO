@@ -13,12 +13,12 @@ describe("Voting", function () {
   let quadraticVoting;
   async function deployVotingContract() {
     // Contracts are deployed using the first signer/account by default
-    const [owner, voter] = await ethers.getSigners();
+    const [owner, voter, voter2] = await ethers.getSigners();
 
     const quadraticVoting_contract = await hre.ethers.getContractFactory("quadraticVoting");
     const quadraticVoting = await quadraticVoting_contract.deploy();
 
-    return { quadraticVoting, owner, voter };
+    return { quadraticVoting, owner, voter, voter2 };
   }
 
   describe("Deployment", function () {
@@ -46,6 +46,18 @@ describe("Voting", function () {
       quadraticVoting_from_owner.openVoting({value: starting_balance});
       await expect(await ethers.provider.getBalance(quadraticVoting.address)).to.equal(starting_balance);
     });
+
+    it("addParticipant(): new voter needs to spend enough ether to purchase a token", async function() {
+      const { quadraticVoting, voter, voter2} = await loadFixture(deployVotingContract);
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const quadraticVoting_from_voter2 = await quadraticVoting.connect(voter2);
+      let paid_for_token = ethers.utils.parseEther("0.0000000000003");
+      let not_enough_for_token = ethers.utils.parseEther("0.00000000000000");
+      // quadraticVoting_from_voter.addParticipant({value: paid_for_token});
+      // quadraticVoting_from_voter2.addParticipant({value: not_enough_for_token});
+      await expect(quadraticVoting_from_voter.addParticipant({value: paid_for_token})).to.not.be.reverted;
+      await expect(quadraticVoting_from_voter2.addParticipant({value: not_enough_for_token})).to.be.reverted;
+    })
 
 
 
