@@ -137,7 +137,7 @@ contract quadraticVoting is Ownable{
         p.creator = msg.sender;
         p.currentBudget = 0;
         p.proposal = IExecutableProposal(_proposalAddress);
-        p.valid = true;
+        p.valid = false;
 
         if (_budget == 0) {//If budget is 0 it is a signaling proposal
             //We save the signaling proposal id into _SignalingProposals array
@@ -309,7 +309,10 @@ contract quadraticVoting is Ownable{
             token.burn(address(this), (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice);
             totalBudget -= _proposals[proposalId].budget;
             //TODO if a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
-            // valid needs to be changed to false.
+            // valid needs to be changed to true.
+            _proposals[proposalId].valid = true;
+            _PendingProposals.pop()
+            
             //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
         }     
