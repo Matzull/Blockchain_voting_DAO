@@ -308,6 +308,8 @@ contract quadraticVoting is Ownable{
             uint debug2 = token.balanceOf(address(this));
             token.burn(address(this), (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice);
             totalBudget -= _proposals[proposalId].budget;
+            //TODO if a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
+            // valid needs to be changed to false.
             //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
             _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
         }     
