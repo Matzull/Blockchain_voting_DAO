@@ -304,11 +304,12 @@ contract quadraticVoting is Ownable{
         //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
         uint threshold = (20 + (_proposals[proposalId].budget * 100) / (totalBudget + 1)) * _numberOfParticipants + (getPendingProposals().length * 100);
         if (votes * 100 >= threshold && totalBudget >= _proposals[proposalId].budget) {//TODO totalBudget should only consider currentbudget and publicly available budget
-            _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
             uint debug = (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice;
             uint debug2 = token.balanceOf(address(this));
             token.burn(address(this), (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice);
             totalBudget -= _proposals[proposalId].budget;
+            //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
+            _proposals[proposalId].proposal.executeProposal{value:_proposals[proposalId].budget * tokenPrice, gas: 100000}(proposalId, votes, _proposals[proposalId].budget);
         }     
     }
 
