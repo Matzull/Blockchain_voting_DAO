@@ -18,6 +18,15 @@ async function main() {
   console.log(
     "Quadratic voting deployed to:", quadraticVoting
   );
+
+  const proposal_contract = await hre.ethers.getContractFactory("Proposal");
+  const proposal = await proposal_contract.deploy();
+
+  await proposal.deployed();
+
+  console.log(
+    "Proposal is deployed to:", proposal
+  );
 }
 
 // We recommend this pattern to be able to use async/await everywhere
