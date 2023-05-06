@@ -28,7 +28,6 @@ describe("Voting", function () {
 
   // Helper function, opens the voting in the quadraticVoting contract
   async function ownerOpensVoting(quadraticVoting, owner) {
-    // test
     const quadraticVoting_from_owner = await quadraticVoting.connect(owner);
     quadraticVoting_from_owner.openVoting();
   }
