@@ -240,7 +240,7 @@ describe("Voting", function () {
       const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
       const proposal_from_voter = await proposal.connect(voter);
       // await expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
-      expect(await quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
+      expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
     })
 
     it("AddProposal(): Successfully adds a signaling proposal", async function() {
