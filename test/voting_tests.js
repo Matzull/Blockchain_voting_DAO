@@ -78,16 +78,35 @@ describe("Voting", function () {
       await expect(quadraticVoting_from_voter2.addParticipant({value: not_enough_for_token})).to.be.reverted;
     })
 
-    // WORK IN PROGRESS
-    // it("removeParticipant(): Participant removes itself from the system, cannot function in the system anymore", async function() {
-    //   const { quadraticVoting, voter, voter2} = await loadFixture(deployVotingContract);
-    //   const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
-    //   let paid_for_token = ethers.utils.parseEther("0.0000000000003");
-    //   // quadraticVoting_from_voter.addParticipant({value: paid_for_token});
-    //   await expect(quadraticVoting_from_voter.addParticipant({value: paid_for_token})).to.not.be.reverted;
-    //   // voted added himself successfully first
+    // I dont know how this doesn't fail, it should fail 100%. 
+    it("removeParticipant(): removed participant cannot do actions inside the system", async function() {
+      // setup
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      ownerOpensVoting(quadraticVoting, owner);
+      voterBecomesParticipant(quadraticVoting, voter);
+      // from voter
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const proposal_from_voter = await proposal.connect(voter);
+      // voter removes himself
+      await quadraticVoting_from_voter.removeParticipant();
+      // tries to add signaling proposal, but really anything with onlyParticipant would work here
+      expect(await quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
+      expect(await quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
+      voterBecomesParticipant(quadraticVoting, voter);
+      expect(await quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
 
-    // })
+    })
+
+    // // WORK IN PROGRESS
+    // // it("removeParticipant(): Participant removes itself from the system, cannot function in the system anymore", async function() {
+    // //   const { quadraticVoting, voter, voter2} = await loadFixture(deployVotingContract);
+    // //   const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+    // //   let paid_for_token = ethers.utils.parseEther("0.0000000000003");
+    // //   // quadraticVoting_from_voter.addParticipant({value: paid_for_token});
+    // //   await expect(quadraticVoting_from_voter.addParticipant({value: paid_for_token})).to.not.be.reverted;
+    // //   // voted added himself successfully first
+
+    // // })
   
 
     //   it("Should receive and store the funds to lock", async function () {
@@ -214,6 +233,15 @@ describe("Voting", function () {
       const proposal_from_voter = await proposal.connect(voter);
       // await expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
       await expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
+    })
+
+    it("OnlyParticipant(): A non-participant cannot add a proposal", async function() {
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      ownerOpensVoting(quadraticVoting, owner);
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const proposal_from_voter = await proposal.connect(voter);
+      // await expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
+      await expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
     })
 
     it("AddProposal(): Successfully adds a signaling proposal", async function() {
