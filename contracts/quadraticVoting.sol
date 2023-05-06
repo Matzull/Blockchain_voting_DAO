@@ -39,11 +39,11 @@ contract quadraticVoting is Ownable {
     uint256[] _PendingProposals;
 
     uint256 _numberOfParticipants;
-    mapping(address => address) _participants;
+    mapping(address => uint) _participants;
 
     modifier onlyParticipant() {
         require(
-            _participants[msg.sender] == _participants[msg.sender],
+            _participants[msg.sender] != 0,
             "Not a participant"
         );
         _;
@@ -104,7 +104,7 @@ contract quadraticVoting is Ownable {
             "Not enough Ether to purchase 1 token"
         );
         token.mint(msg.sender, (msg.value * (10**18)) / tokenPrice);
-        _participants[msg.sender] = msg.sender;
+        _participants[msg.sender] = 1;
         _numberOfParticipants++;
         emit Events.VoterCreated(msg.sender);
     }
@@ -114,7 +114,7 @@ contract quadraticVoting is Ownable {
     comprar o vender tokens, a no ser que se vuelva a a ̃nadir como participante. */
 
     function removeParticipant() public onlyParticipant {
-        _participants[msg.sender] = address(0);
+        _participants[msg.sender] = 0;
         _numberOfParticipants--;
         emit Events.VoterRemoved(msg.sender);
     }
