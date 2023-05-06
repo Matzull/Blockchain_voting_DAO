@@ -412,6 +412,29 @@ describe("Voting", function () {
       BN_balance2 = ethers.BigNumber.from('0');
       expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance2);
     })
+
+    it("sellTokens(): Voter cannot sell more tokens than he owns token", async function() {
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      // by default we pay exactly enough for 1 token
+      voterBecomesParticipant(quadraticVoting, voter);
+      // block for getting erc20
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const erc20_address = await quadraticVoting_from_voter.getERC20();
+      const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
+      // for voter
+      const erc20_from_voter = await erc20.connect(voter);
+
+      // 1x1 + 18x0
+      BN_balance = ethers.BigNumber.from('1000000000000000000');
+      // starting token balance after joining the quadraticVoting
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
+
+      // now selling 5 tokens
+      BN_balance2 = ethers.BigNumber.from('5000000000000000000');
+      expect(quadraticVoting_from_voter.sellTokens(BN_balance2)).to.be.reverted;
+      // still has the same balance after unsuccessful sale of tokens
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
+    })
   })
 
 
