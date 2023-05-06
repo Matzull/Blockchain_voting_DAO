@@ -39,11 +39,11 @@ contract quadraticVoting is Ownable {
     uint256[] _PendingProposals;
 
     uint256 _numberOfParticipants;
-    mapping(address => uint) _participants;
+    mapping(address => address) _participants;
 
     modifier onlyParticipant() {
         require(
-            _participants[msg.sender] != 0,
+            _participants[msg.sender] == _participants[msg.sender],
             "Not a participant"
         );
         _;
@@ -104,7 +104,7 @@ contract quadraticVoting is Ownable {
             "Not enough Ether to purchase 1 token"
         );
         token.mint(msg.sender, (msg.value * (10**18)) / tokenPrice);
-        _participants[msg.sender] = 1;
+        _participants[msg.sender] = msg.sender;
         _numberOfParticipants++;
         emit Events.VoterCreated(msg.sender);
     }
@@ -114,7 +114,7 @@ contract quadraticVoting is Ownable {
     comprar o vender tokens, a no ser que se vuelva a a ̃nadir como participante. */
 
     function removeParticipant() public onlyParticipant {
-        _participants[msg.sender] = 0;
+        _participants[msg.sender] = address(0);
         _numberOfParticipants--;
         emit Events.VoterRemoved(msg.sender);
     }
@@ -180,13 +180,15 @@ contract quadraticVoting is Ownable {
     ver tokens no gastados en votaciones y recuperar el dinero invertido en ellos.*/
 
     function sellTokens(uint256 amount) public onlyParticipant {
+        // tokens is actually ether here
         uint256 tokens = (amount / (10**18)) * tokenPrice;
         require(
             token.balanceOf(msg.sender) >= tokens,
             "Not enough tokens to sell"
         );
         payable(msg.sender).transfer(tokens);
-        token.burn(msg.sender, tokens); //TODO seller wants to input number of tokens
+        // the amount burned is the amount
+        token.burn(msg.sender, amount); //TODO seller wants to input number of tokens
     }
 
     /*getERC20(): Devuelve la direcci ́on del contrato ERC20 que utiliza el sistema de votaci ́on

@@ -39,6 +39,13 @@ describe("Voting", function () {
     quadraticVoting_from_voter.addParticipant({value: paid_for_token});
   }
 
+  async function getERC20_contract(quadraticVoting, owner) {
+    const quadraticVoting_from_owner = await quadraticVoting.connect(owner);
+    const erc20_address = await quadraticVoting_from_owner.getERC20();
+    const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
+    return erc20;
+  }
+
   describe("Deployment", function () {
 
     it("Should set the right owner", async function () {
@@ -193,6 +200,11 @@ describe("Voting", function () {
     //     });
     //   });
   });
+
+  describe("Modifiers", function() {
+    
+  })
+
   describe("Proposals", function() {
 
     /*
@@ -269,7 +281,7 @@ describe("Voting", function () {
       // adds a signaling proposal, 3rd argument is 0
       await quadraticVoting_from_voter.addProposal("title", "description", 20, proposal_from_voter.address);
       // first added proposal has an index of 1
-      let bigNumber1 = ethers.BigNumber.from(1);
+      let bigNumber1 = ethers.BigNumber.from('1');
       expect((await quadraticVoting_from_voter.getPendingProposals()).length).to.equal(bigNumber1);
     })
 
@@ -330,7 +342,77 @@ describe("Voting", function () {
       expect(await quadraticVoting_from_voter.cancelProposal(1)).to.not.be.reverted;
     })
 
+    
+
 
 
   });
+
+  describe("Buying and selling tokens", async function() {
+
+    it("addParticipant(): user starts with correct amount of tokens", async function() {
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      // by default we pay exactly enough for 1 token
+      voterBecomesParticipant(quadraticVoting, voter);
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const erc20_address = await quadraticVoting_from_voter.getERC20();
+      const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
+      const erc20_from_voter = await erc20.connect(voter);
+
+      // 1x1 + 18x0
+      BN_balance = ethers.BigNumber.from('1000000000000000000');
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
+    })
+
+    it("buyTokens(): User buys an additional token", async function () {
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      // by default we pay exactly enough for 1 token
+      voterBecomesParticipant(quadraticVoting, voter);
+      // block for getting erc20
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const erc20_address = await quadraticVoting_from_voter.getERC20();
+      const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
+      // for voter
+      const erc20_from_voter = await erc20.connect(voter);
+
+      // 1x1 + 18x0
+      BN_balance = ethers.BigNumber.from('1000000000000000000');
+      // starting token balance after joining the quadraticVoting
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
+
+      // paying for 1 more token
+      let eth_for_1_token = ethers.utils.parseEther("0.0000000000003");
+      await quadraticVoting_from_voter.buyTokens({value: eth_for_1_token});
+
+      // 1x2 + 18x0
+      BN_balance2 = ethers.BigNumber.from('2000000000000000000');
+      // token balance after buying an additional token
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance2);
+    })
+
+    it("sellTokens(): Voter sells a token", async function() {
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      // by default we pay exactly enough for 1 token
+      voterBecomesParticipant(quadraticVoting, voter);
+      // block for getting erc20
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const erc20_address = await quadraticVoting_from_voter.getERC20();
+      const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
+      // for voter
+      const erc20_from_voter = await erc20.connect(voter);
+
+      // 1x1 + 18x0
+      BN_balance = ethers.BigNumber.from('1000000000000000000');
+      // starting token balance after joining the quadraticVoting
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
+
+      // now selling 1 token
+      quadraticVoting_from_voter.sellTokens(BN_balance);
+
+      BN_balance2 = ethers.BigNumber.from('0');
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance2);
+    })
+  })
+
+
 });
