@@ -89,10 +89,10 @@ describe("Voting", function () {
       // voter removes himself
       await quadraticVoting_from_voter.removeParticipant();
       // tries to add signaling proposal, but really anything with onlyParticipant would work here
-      await expect( quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
+      expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
       // await expect( quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
       voterBecomesParticipant(quadraticVoting, voter);
-      expect(await quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
+      expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
 
     })
 
