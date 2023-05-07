@@ -453,6 +453,9 @@ describe("Voting", function () {
       BN_balance = ethers.BigNumber.from('1000000000000000000');
       expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
 
+      // if user didnt approve the allowance, he cannot vote, it will be reverted
+      expect(quadraticVoting_from_voter.stake(1, 1)).to.be.reverted;
+
       //approving use of tokens by the user, to the quadraticVoting
       BN_balance2 = ethers.BigNumber.from('1000000000000000000');
       await erc20_from_voter.approve(quadraticVoting.address, BN_balance2);
@@ -463,8 +466,31 @@ describe("Voting", function () {
       //voting to proposal 1, with whole balance (1 token)
       await quadraticVoting_from_voter.stake(1, 1);
 
-      ///number of votes in the proposal after the vote happened.
+      // number of votes in the proposal after the vote happened.
       expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(1))
+
+      // TODO did transfer actually happen
+      // TODO currentBudget is 1 * tokenPrice
+      // add test here
+  
+      // voter goes to vote again, this time it should cost 3 tokens to cast a single vote
+      // buying tokens, approving the allowance
+      let eth_for_3_token = ethers.utils.parseEther("0.0000000000009");
+      await quadraticVoting_from_voter.buyTokens({value: eth_for_3_token});
+      BN_balance3 = ethers.BigNumber.from('3000000000000000000');
+      await erc20_from_voter.approve(quadraticVoting.address, BN_balance3)
+
+      // 1 more vote, costs 3 token
+      await quadraticVoting_from_voter.stake(1, 1);
+
+      // should be 2 votes inside
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(2))
+
+      // TODO currentBudget is 4 * tokenPrice
+      // transfer happened, user lost correct amount of money
+      
+
+
     })
 
 
