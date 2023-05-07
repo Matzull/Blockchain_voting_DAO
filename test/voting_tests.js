@@ -103,131 +103,13 @@ describe("Voting", function () {
       // await expect( quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
       voterBecomesParticipant(quadraticVoting, voter);
       expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
+      })
 
-    })
-
-    // // WORK IN PROGRESS
-    // // it("removeParticipant(): Participant removes itself from the system, cannot function in the system anymore", async function() {
-    // //   const { quadraticVoting, voter, voter2} = await loadFixture(deployVotingContract);
-    // //   const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
-    // //   let paid_for_token = ethers.utils.parseEther("0.0000000000003");
-    // //   // quadraticVoting_from_voter.addParticipant({value: paid_for_token});
-    // //   await expect(quadraticVoting_from_voter.addParticipant({value: paid_for_token})).to.not.be.reverted;
-    // //   // voted added himself successfully first
-
-    // // })
-  
-
-    //   it("Should receive and store the funds to lock", async function () {
-    //     const { lock, lockedAmount } = await loadFixture(
-    //       deployOneYearLockFixture
-    //     );
-
-    //     expect(await ethers.provider.getBalance(lock.address)).to.equal(
-    //       lockedAmount
-    //     );
-    //   });
-
-    //   it("Should fail if the unlockTime is not in the future", async function () {
-    //     // We don't use the fixture here because we want a different deployment
-    //     const latestTime = await time.latest();
-    //     const Lock = await ethers.getContractFactory("Lock");
-    //     await expect(Lock.deploy(latestTime, { value: 1 })).to.be.revertedWith(
-    //       "Unlock time should be in the future"
-    //     );
-    //   });
-    // });
-
-    // describe("Withdrawals", function () {
-    //   describe("Validations", function () {
-    //     it("Should revert with the right error if called too soon", async function () {
-    //       const { lock } = await loadFixture(deployOneYearLockFixture);
-
-    //       await expect(lock.withdraw()).to.be.revertedWith(
-    //         "You can't withdraw yet"
-    //       );
-    //     });
-
-    //     it("Should revert with the right error if called from another account", async function () {
-    //       const { lock, unlockTime, otherAccount } = await loadFixture(
-    //         deployOneYearLockFixture
-    //       );
-
-    //       // We can increase the time in Hardhat Network
-    //       await time.increaseTo(unlockTime);
-
-    //       // We use lock.connect() to send a transaction from another account
-    //       await expect(lock.connect(otherAccount).withdraw()).to.be.revertedWith(
-    //         "You aren't the owner"
-    //       );
-    //     });
-
-    //     it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
-    //       const { lock, unlockTime } = await loadFixture(
-    //         deployOneYearLockFixture
-    //       );
-
-    //       // Transactions are sent using the first signer by default
-    //       await time.increaseTo(unlockTime);
-
-    //       await expect(lock.withdraw()).not.to.be.reverted;
-    //     });
-    //   });
-
-    //   describe("Events", function () {
-    //     it("Should emit an event on withdrawals", async function () {
-    //       const { lock, unlockTime, lockedAmount } = await loadFixture(
-    //         deployOneYearLockFixture
-    //       );
-
-    //       await time.increaseTo(unlockTime);
-
-    //       await expect(lock.withdraw())
-    //         .to.emit(lock, "Withdrawal")
-    //         .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
-    //     });
-    //   });
-
-    //   describe("Transfers", function () {
-    //     it("Should transfer the funds to the owner", async function () {
-    //       const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-    //         deployOneYearLockFixture
-    //       );
-
-    //       await time.increaseTo(unlockTime);
-
-    //       await expect(lock.withdraw()).to.changeEtherBalances(
-    //         [owner, lock],
-    //         [lockedAmount, -lockedAmount]
-    //       );
-    //     });
-    //   });
   });
 
-  describe("Modifiers", function() {
-    
-  })
 
   describe("Proposals", function() {
 
-    /*
-    it("AddProposal(): Can only add a proposal if voting is open", async function() {
-      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
-      voterBecomesParticipant(quadraticVoting, voter);
-      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
-
-      const proposal_from_voter = await proposal.connect(voter);
-      ownerOpensVoting(quadraticVoting, owner);
-
-      // OWNER OPENED VOTING, SHOULDN'T BE REVERTED, BUT IT DOES GET REVERTED? This is why I separated the test into 2 functions, it
-      // behaves weirdly sometimes, so it's best to test things separately.
-      await expect(quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address)).to.be.reverted;
-      // owner opens voting
-      ownerOpensVoting(quadraticVoting, owner);
-      quadraticVoting_from_voter2 = await quadraticVoting.connect(voter);
-      await expect(quadraticVoting_from_voter2.addProposal("title", "description", 0, proposal_from_voter.address)).to.not.be.reverted;
-    })
-    */
 
     it("AddProposal(): Cannot add a proposal if voting isnt open", async function() {
       const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
