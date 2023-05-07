@@ -387,8 +387,8 @@ contract quadraticVoting is Ownable {
                 _proposals[proposalsIds[i]].currentBudget
             );
         }
-        //Not invested contracts budget is transfered to owners account
-        payable(owner()).transfer(totalBudget);
+        // The funds are not transfered to the owner, this is the state where voters can request their refunds
+        //payable(owner()).transfer(totalBudget);
         //isVotingOpen => False
         isVotingOpen = 2;
     }
