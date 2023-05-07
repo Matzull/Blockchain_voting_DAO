@@ -56,6 +56,11 @@ contract quadraticVoting is Ownable {
         _;
     }
 
+    modifier votingOpenOrRefund() {
+        require(isVotingOpen != 0, "Voting is closed");
+        _;
+    }
+
     //only the creator of the proposal with id proposalId can call this function
     modifier OnlyCreator(uint256 proposalId) {
         require(
@@ -258,25 +263,25 @@ contract quadraticVoting is Ownable {
 
     function getProposalInfo_budget(
         uint256 proposalId
-    ) public view VotingOpen returns (uint256) {
+    ) public view votingOpenOrRefund returns (uint256) {
         return _proposals[proposalId].budget;
     }
 
     function getProposalInfo_currentBudget(
         uint256 proposalId
-    ) public view VotingOpen returns (uint256) {
+    ) public view votingOpenOrRefund returns (uint256) {
         return _proposals[proposalId].currentBudget;
     }
 
     function getProposalInfo_voteAmount(
         uint256 proposalId
-    ) public view VotingOpen returns (uint256) {
+    ) public view votingOpenOrRefund returns (uint256) {
         return _proposals[proposalId].voteAmount;
     }
 
     function getProposalInfo_active(
         uint256 proposalId
-    ) public view VotingOpen returns (bool) {
+    ) public view votingOpenOrRefund returns (bool) {
         return _proposals[proposalId].active;
     }
 
@@ -436,7 +441,8 @@ contract quadraticVoting is Ownable {
             }
             //Pay voter_address.n_votes^2 to voter_address (amount / )
             uint votes = _proposals[proposal_i]._voters[msg.sender];
-            refund += votes * votes * (10 ** 18) * tokenPrice;
+            _proposals[proposal_i].currentBudget -= votes * votes * tokenPrice;
+            refund += votes * votes * tokenPrice;
         }
         _participants[msg.sender] = 0;
         //Return the tokens to the voter for later withdrawal in the token contract

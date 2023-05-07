@@ -434,6 +434,14 @@ describe("Voting", function () {
   })
 
   describe("Voting tests", async function() {
+
+    //Voting test sequence 1 consist of in order:
+    // initial setup
+    // adding a signaling proposal
+    // voter trying to vote without setting an allowance
+    // voter successfully voting for the proposal
+    // voter buying more tokens and voting again with the increased cost
+    // voter withdrawing the last vote
     it("Voting test sequence 1", async function() {
       // initial setup
       const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
@@ -502,6 +510,94 @@ describe("Voting", function () {
       
 
 
+    })
+
+    // Voting sequence 2 is similar to voting sequence 1, but its on a funding proposal so that the return of funds can be tested
+    it("Voting test sequence 2", async function() {
+      // initial setup
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      voterBecomesParticipant(quadraticVoting, voter);
+      ownerOpensVoting(quadraticVoting, owner);
+      // contracts connected to voter
+      const proposal_from_voter = await proposal.connect(voter);
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const erc20_from_voter = await getERC20_contract(quadraticVoting, voter);
+      
+      // adds a funding proposal to vote into
+      await quadraticVoting_from_voter.addProposal("title", "description", 5, proposal_from_voter.address);
+
+      // budget correctly set
+      expect( await quadraticVoting_from_voter.getProposalInfo_budget(1)).is.equal(ethers.BigNumber.from(5))
+
+      // just checking that its index is 1
+      let bigNumber1 = ethers.BigNumber.from(1);
+      expect((await quadraticVoting_from_voter.getPendingProposals()).length).to.equal(bigNumber1);
+
+      // user has 1 token at start, needs to approve it for use first
+      BN_balance = ethers.BigNumber.from('1000000000000000000');
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
+
+      // if user didnt approve the allowance, he cannot vote, it will be reverted
+      expect(quadraticVoting_from_voter.stake(1, 1)).to.be.reverted;
+
+      //approving use of tokens by the user, to the quadraticVoting
+      BN_balance2 = ethers.BigNumber.from('1000000000000000000');
+      await erc20_from_voter.approve(quadraticVoting.address, BN_balance2);
+
+      //number of votes in the proposal before the vote happened is 0.
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(0))
+
+      //voting to proposal 1, with whole balance (1 token)
+      await quadraticVoting_from_voter.stake(1, 1);
+
+      // number of votes in the proposal after the vote happened.
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(1))
+
+      // The balance of the proposal increased
+      // 1 vote * tokenprice is 300000
+      proposal_balance = ethers.BigNumber.from(300000)
+      expect( await quadraticVoting_from_voter.getProposalInfo_currentBudget(1)).is.equal(proposal_balance)
+      // add test here
+  
+      // voter goes to vote again, this time it should cost 3 tokens to cast a single vote
+      // buying tokens, approving the allowance
+      let eth_for_3_token = ethers.utils.parseEther("0.0000000000009");
+      await quadraticVoting_from_voter.buyTokens({value: eth_for_3_token});
+      BN_balance3 = ethers.BigNumber.from('3000000000000000000');
+      await erc20_from_voter.approve(quadraticVoting.address, BN_balance3)
+
+      // 1 more vote, costs 3 token
+      await quadraticVoting_from_voter.stake(1, 1);
+
+      // Proposal should have 2 votes
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(2))
+
+      // Testing the quadriatic cost, it should be 4 x price of token (2^2 = 4)
+      proposal_balance = ethers.BigNumber.from(300000 * 4)
+      expect( await quadraticVoting_from_voter.getProposalInfo_currentBudget(1)).is.equal(proposal_balance)
+
+      // Withdraw 1 vote from the proposal
+      // Proposal should have 1 vote inside, and currentBudget of 1*tokenprice
+      await quadraticVoting_from_voter.withdrawFromProposal(1, 1);
+      proposal_balance = ethers.BigNumber.from(300000)
+      expect( await quadraticVoting_from_voter.getProposalInfo_currentBudget(1)).is.equal(proposal_balance)
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(1)
+
+      // Here this test will start to differ more from sequence 1:
+      // The voter will close the voting, and the user will try to get their funds back.
+
+      const quadraticVoting_from_owner = await quadraticVoting.connect(owner);
+      expect( await quadraticVoting_from_owner.closeVoting()).to.not.be.reverted;
+      expect( await quadraticVoting_from_owner)
+
+      // Budget of proposal before refunding
+      expect( await quadraticVoting_from_voter.getProposalInfo_currentBudget(1)).is.equal(300000)
+      quadraticVoting_from_voter.requestFundsReturn();
+
+      // Budget of proposal after refunding
+      expect( await quadraticVoting_from_voter.getProposalInfo_currentBudget(1)).is.equal(0)
+
+      expect( await quadraticVoting_from_owner.finishVotingSession()).to.not.be.reverted;
     })
 
 
