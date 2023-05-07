@@ -39,11 +39,13 @@ describe("Voting", function () {
     quadraticVoting_from_voter.addParticipant({value: paid_for_token});
   }
 
-  async function getERC20_contract(quadraticVoting, owner) {
-    const quadraticVoting_from_owner = await quadraticVoting.connect(owner);
-    const erc20_address = await quadraticVoting_from_owner.getERC20();
-    const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
-    return erc20;
+  async function getERC20_contract(quadraticVoting, user) {
+    const quadraticVoting_from_user = await quadraticVoting.connect(user);
+      const erc20_address = await quadraticVoting_from_user.getERC20();
+      const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
+      // for voter
+      const erc20_from_user = await erc20.connect(user);
+      return erc20_from_user
   }
 
   describe("Deployment", function () {
@@ -366,12 +368,9 @@ describe("Voting", function () {
       const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
       // by default we pay exactly enough for 1 token
       voterBecomesParticipant(quadraticVoting, voter);
-      // block for getting erc20
       const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
-      const erc20_address = await quadraticVoting_from_voter.getERC20();
-      const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
-      // for voter
-      const erc20_from_voter = await erc20.connect(voter);
+      // getting erc20
+      const erc20_from_voter = await getERC20_contract(quadraticVoting, voter);
 
       // 1x1 + 18x0
       BN_balance = ethers.BigNumber.from('1000000000000000000');
@@ -417,10 +416,8 @@ describe("Voting", function () {
       voterBecomesParticipant(quadraticVoting, voter);
       // block for getting erc20
       const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
-      const erc20_address = await quadraticVoting_from_voter.getERC20();
-      const erc20 = await hre.ethers.getContractAt("Stoken", erc20_address);
       // for voter
-      const erc20_from_voter = await erc20.connect(voter);
+      const erc20_from_voter = await getERC20_contract(quadraticVoting, voter);
 
       // 1x1 + 18x0
       BN_balance = ethers.BigNumber.from('1000000000000000000');
@@ -433,6 +430,44 @@ describe("Voting", function () {
       // still has the same balance after unsuccessful sale of tokens
       expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
     })
+  })
+
+  describe("Voting tests", async function() {
+    it("Voter can vote", async function() {
+      // initial setup
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      voterBecomesParticipant(quadraticVoting, voter);
+      ownerOpensVoting(quadraticVoting, owner);
+      // contracts connected to voter
+      const proposal_from_voter = await proposal.connect(voter);
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const erc20_from_voter = await getERC20_contract(quadraticVoting, voter);
+      
+      // adds a signaling proposal to vote into
+      await quadraticVoting_from_voter.addProposal("title", "description", 0, proposal_from_voter.address);
+      // just checking that its index is 1
+      let bigNumber1 = ethers.BigNumber.from(1);
+      expect((await quadraticVoting_from_voter.getSignalingProposals()).length).to.equal(bigNumber1);
+
+      // user has 1 token at start, needs to approve it for use first
+      BN_balance = ethers.BigNumber.from('1000000000000000000');
+      expect((await erc20_from_voter.balanceOf(voter.address))).to.equal(BN_balance);
+
+      //approving use of tokens by the user, to the quadraticVoting
+      BN_balance2 = ethers.BigNumber.from('1000000000000000000');
+      await erc20_from_voter.approve(quadraticVoting.address, BN_balance2);
+
+      //number of votes in the proposal before the vote happened is 0.
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(0))
+
+      //voting to proposal 1, with whole balance (1 token)
+      await quadraticVoting_from_voter.stake(1, 1);
+
+      ///number of votes in the proposal after the vote happened.
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(1))
+    })
+
+
   })
 
 
