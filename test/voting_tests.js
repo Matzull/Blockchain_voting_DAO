@@ -32,6 +32,13 @@ describe("Voting", function () {
     quadraticVoting_from_owner.openVoting();
   }
 
+  // Helper function, opens the voting with totalbudget, for testing approval of proposals
+  async function ownerOpensVoting_with_budget(quadraticVoting, owner) {
+    const quadraticVoting_from_owner = await quadraticVoting.connect(owner);
+    let budget = ethers.utils.parseEther("0.00000000003");
+    quadraticVoting_from_owner.openVoting({value: budget});
+  }
+
   // Helper function, makes the voter become a participant, takes argument for which voter
   async function voterBecomesParticipant(quadraticVoting, voter) {
     const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
@@ -453,7 +460,6 @@ describe("Voting", function () {
 
       // Proposal should have 2 votes
       expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(2))
-
       // Testing the quadriatic cost, it should be 4 x price of token (2^2 = 4)
       proposal_balance = ethers.BigNumber.from(300000 * 4)
       expect( await quadraticVoting_from_voter.getProposalInfo_currentBudget(1)).is.equal(proposal_balance)
@@ -480,6 +486,40 @@ describe("Voting", function () {
       expect( await quadraticVoting_from_voter.getProposalInfo_currentBudget(1)).is.equal(0)
 
       expect( await quadraticVoting_from_owner.finishVotingSession()).to.not.be.reverted;
+    })
+
+    it("Voting test sequence 3", async function() {
+      // setup
+      const {quadraticVoting, owner, voter, voter2, proposal } = await loadFixture(deployVotingContract);
+      voterBecomesParticipant(quadraticVoting, voter);
+      ownerOpensVoting_with_budget(quadraticVoting, owner);
+
+      // contracts connected to voter
+      const proposal_from_voter = await proposal.connect(voter);
+      const quadraticVoting_from_voter = await quadraticVoting.connect(voter);
+      const erc20_from_voter = await getERC20_contract(quadraticVoting, voter);
+
+      // adds a funding proposal to vote into
+      await quadraticVoting_from_voter.addProposal("title", "description", 50, proposal_from_voter.address);
+
+      // budget correctly set
+      expect( await quadraticVoting_from_voter.getProposalInfo_budget(1)).is.equal(ethers.BigNumber.from(50))
+
+      // user has 1 token at start, buys 3 more, approves all 4
+      let eth_for_3_token = ethers.utils.parseEther("0.0000000000009");
+      await quadraticVoting_from_voter.buyTokens({value: eth_for_3_token});
+      BN_balance3 = ethers.BigNumber.from('4000000000000000000');
+      await erc20_from_voter.approve(quadraticVoting.address, BN_balance3)
+
+      //number of votes in the proposal before the vote happened is 0.
+      expect( await quadraticVoting_from_voter.getProposalInfo_voteAmount(1)).is.equal(ethers.BigNumber.from(0))
+
+      //voting to proposal 1, with whole balance (4 tokens, 2 votes)
+      await quadraticVoting_from_voter.stake(1, 2);
+
+      // successfully approved a proposal
+      expect( await quadraticVoting_from_voter.getProposalInfo_active(1)).is.equal(false)
+
     })
 
 

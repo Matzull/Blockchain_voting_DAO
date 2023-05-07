@@ -342,14 +342,15 @@ contract quadraticVoting is Ownable {
     ) internal notSignalingProposal(proposalId) {
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numParticipants + numPendingProposals
         //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
+        uint256 ttlBudget = totalBudget + _proposals[proposalId].currentBudget;
         uint256 threshold = (20 +
-            (_proposals[proposalId].budget * 100) /
-            (totalBudget + 1)) *
+            (_proposals[proposalId].currentBudget * 100) /
+            (ttlBudget + 1)) *
             _numberOfParticipants +
             (getPendingProposals().length * 100);
         if (
             votes * 100 >= threshold &&
-            totalBudget >= _proposals[proposalId].budget
+            ttlBudget >= _proposals[proposalId].budget
         ) {
             //TotalBudget should only consider currentbudget and publicly available budget
             token.burn(
