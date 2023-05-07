@@ -26,7 +26,6 @@ contract quadraticVoting is Ownable {
         address creator;
         uint256 currentBudget;
         mapping(address => uint256) _voters;
-        address[] _votersId;
         IExecutableProposal proposal;
         bool active; //This field is true if the proposal is still votable
     }
@@ -303,14 +302,8 @@ contract quadraticVoting is Ownable {
         _proposals[proposalId]._voters[msg.sender] += votes;
         _proposals[proposalId].voteAmount += votes;
         _proposals[proposalId].currentBudget += price * tokenPrice;
-        if (
-            _proposals[proposalId]._voters[msg.sender] != votes
-        ) //If we have just created the voter
-        {
-            _proposals[proposalId]._votersId.push(msg.sender); //Add the voter to the votersId array
-        }
         emit Events.VoteStaked(proposalId, msg.sender, votes);
-        // need to not call this is signaling proposal because you can still vote for signaling, but
+        // need to not call this if its a signaling proposal because you can still vote for signaling, but
         // checkAndExecute is notSignalingProposal and it will revert everything.
         if (_proposals[proposalId].budget != 0) {
             _checkAndExecuteProposal(
