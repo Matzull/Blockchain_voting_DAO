@@ -118,7 +118,7 @@ contract quadraticVoting is Ownable {
     }
 
     /*removeParticipant(): Function for a participant to remove himself/herself from the system.
-    A participant who invokes this function will not be able to cast votes, create proposals or buy or sell tokens, unless he/she is re-added as a participant.
+    A participant who invokes this function will not be able to cast votes, create proposals or
     buy or sell tokens, unless it is re-added as a participant.*/
 
     function removeParticipant() public onlyParticipant {
@@ -359,6 +359,8 @@ contract quadraticVoting is Ownable {
             totalBudget -= _proposals[proposalId].budget;
             _proposals[proposalId].active = false; //We approve the proposal
 
+            _ApprovedProposals.push(proposalId);
+            
             //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
             _proposals[proposalId].proposal.executeProposal{
                 value: _proposals[proposalId].budget * tokenPrice,
