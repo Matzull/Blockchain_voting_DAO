@@ -292,6 +292,8 @@ contract quadraticVoting is Ownable {
             (currentVotes + votes) -
             (currentVotes * currentVotes); //price in tokens without decimals()
 
+        // No worry about reentrancy because the external contract here is of our own choice
+        // And its OpenZeppelin's ERC20 which is well tested
         token.transferFrom(msg.sender, address(this), (price * (10 ** 18))); //we add the decimals for the transfer
         _proposals[proposalId]._voters[msg.sender] += votes;
         _proposals[proposalId].voteAmount += votes;
@@ -325,11 +327,12 @@ contract quadraticVoting is Ownable {
         uint256 price = (currentVotes * currentVotes) -
             (currentVotes - votes) *
             (currentVotes - votes);
-        token.increaseAllowance(address(this), price * tokenPrice);
-        token.transferFrom(address(this), msg.sender, (price * tokenPrice));
         _proposals[proposalId].currentBudget -= price * tokenPrice;
         _proposals[proposalId]._voters[msg.sender] -= votes;
         _proposals[proposalId].voteAmount -= votes;
+        // Transfers are last to leave no pending updates
+        token.increaseAllowance(address(this), price * tokenPrice);
+        token.transferFrom(address(this), msg.sender, (price * tokenPrice));
         emit Events.VoteWithdrawed(proposalId, msg.sender, votes);
     }
 
@@ -356,13 +359,14 @@ contract quadraticVoting is Ownable {
                 (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice
             );
             totalBudget -= _proposals[proposalId].budget;
-            //If a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
+            _proposals[proposalId].active = false; //We approve the proposal
+
             //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
             _proposals[proposalId].proposal.executeProposal{
                 value: _proposals[proposalId].budget * tokenPrice,
                 gas: 100000
             }(proposalId, votes, _proposals[proposalId].budget);
-            _proposals[proposalId].active = false; //We approve the proposal
+            
         }
     }
 
