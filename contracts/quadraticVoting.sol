@@ -6,10 +6,10 @@ import "./IExecutableProposal.sol";
 import "./Libraries/safeMath.sol";
 import "./Libraries/events.sol";
 
-/*En la creacion de este contrato se debe proporcionar el precio en Wei de cada token y
-el numero maximo de tokens que se van a poner a la venta para votaciones. Entre otras
-cosas, el constructor debe crear el contrato de tipo ERC20 que gestiona los tokens. En
-la secci ́on 3 se proporcionan m ́as detalles sobre el codigo del estandar ERC20.*/
+/*In the creation of this contract you must provide the price in Wei of each token and the maximum number of tokens to be put up for
+the maximum number of tokens to be offered for sale for voting. Among other things, the
+Among other things, the builder must create the ERC20 type contract that manages the tokens. In
+more details about the ERC20 standard code are provided in section 3.*/
 contract quadraticVoting is Ownable {
     uint256 private tokenPrice = 300000; // 1 token = 300000 wei ≃ 5,5 eur
     uint256 private tokenAmount = 1000000;
@@ -39,7 +39,7 @@ contract quadraticVoting is Ownable {
     uint256[] _PendingProposals;
 
     uint256 _numberOfParticipants;
-    mapping(address => uint) _participants;
+    mapping(address => uint) _participants; //addresses and 1 if they are participants
 
     modifier onlyParticipant() {
         require(_participants[msg.sender] != 0, "Not a participant");
@@ -56,6 +56,7 @@ contract quadraticVoting is Ownable {
         _;
     }
 
+    //only the creator of the proposal with id proposalId can call this function
     modifier OnlyCreator(uint256 proposalId) {
         require(
             _proposals[proposalId].creator == msg.sender,
@@ -77,28 +78,29 @@ contract quadraticVoting is Ownable {
         _;
     }
 
+    //This contract inherits from Ownable
     constructor() Ownable() {
-        token = new Stoken(0);
+        token = new Stoken(0); //It starts with 0 tokens
         numberOfProposals = 1; //We start in one to keep 0 as the error code
     }
 
-    /*openVoting(): Apertura del periodo de votaci ́on. Solo lo puede ejecutar el usuario que
-    ha creado el contrato. En la transacci ́on que ejecuta esta funci ́on se debe transferir el
-    presupuesto inicial del que se va a disponer para financiar propuestas. Recuerda que
-    este presupuesto total se modificar ́a cuando se aprueben propuestas: se incrementar ́a
-    con las aportaciones en tokens de los votos de las propuestas que se vayan aprobando
-    y se decrementar ́a por el importe que se transfiere a las propuestas que se aprueben.*/
+    /*openVoting(): Opening of the voting period. It can only be executed by the user who
+    created the contract. In the transaction that executes this function, the initial budget that will be available to finance proposals must be transferred.
+    the initial budget that will be available to finance proposals. Remember that
+    this total budget will be modified when proposals are approved: it will be increased by the contributions in tokens.
+    with the contributions in tokens from the votes of the proposals that are approved and will be
+    and will be decreased by the amount that is transferred to the proposals that are approved.*/
 
     function openVoting() public payable onlyOwner {
         totalBudget = msg.value;
         isVotingOpen = 1;
     }
 
-    /*addParticipant(): Funci ́on que utilizan los participantes para inscribirse en la votaci ́on.
-    Los participantes se pueden inscribir en cualquier momento, incluso antes de que se abra
-    el periodo de votaci ́on. Cuando se inscriben, los participantes deben transferir Ether
-    para comprar tokens (al menos un token) que utilizar ́an para realizar sus votaciones.
-    Esta funci ́on debe crear y asignar los tokens que se pueden comprar con ese importe. */
+    /*addParticipant(): Function used by participants to register for voting.
+    Participants can register at any time, even before the voting period opens.
+    the voting period opens. When registering, participants are required to transfer Ether
+    to purchase tokens (at least one token) that they will use to cast their votes.
+    This function must create and allocate the tokens that can be purchased with that amount.*/
 
     function addParticipant() public payable {
         require(
@@ -111,9 +113,9 @@ contract quadraticVoting is Ownable {
         emit Events.VoterCreated(msg.sender);
     }
 
-    /*removeParticipant(): Funci ́on para que un participante pueda eliminarse del sistema.
-    Un participante que invoca esta funci ́on no podr ́a depositar votos, crear propuestas ni
-    comprar o vender tokens, a no ser que se vuelva a a ̃nadir como participante. */
+    /*removeParticipant(): Function for a participant to remove himself/herself from the system.
+    A participant who invokes this function will not be able to cast votes, create proposals or buy or sell tokens, unless he/she is re-added as a participant.
+    buy or sell tokens, unless it is re-added as a participant.*/
 
     function removeParticipant() public onlyParticipant {
         _participants[msg.sender] = 0;
@@ -121,13 +123,13 @@ contract quadraticVoting is Ownable {
         emit Events.VoterRemoved(msg.sender);
     }
 
-    /* addProposal(): Funci ́on que crea una propuesta. Cualquier participante puede crear pro-
-    puestas, pero solo cuando la votaci ́on est ́a abierta. Recibe todos los atributos de la
-    propuesta: t ́ıtulo, descripci ́on, presupuesto necesario para llevar a cabo la propuesta
-    (puede ser cero si es una propuesta de signaling) y la direcci ́on de un contrato que im-
-    plemente el interfaz ExecutableProposal, que ser ́a el receptor del dinero presupuestado
-    en caso de ser aprobada la propuesta. Debe devolver un identificador de la propuesta
-    creada.*/
+    /* addProposal(): Function that creates a proposal. Any participant can create proposals, but only when voting is open.
+    proposals, but only when voting is open. It receives all the attributes of the
+    proposal: title, description, budget needed to carry out the proposal (it can be zero if it is a proposal).
+    (it can be zero if it is a signaling proposal) and the address of a contract that will implement the ExecutableProgram interface.
+    the ExecutableProposal interface, which will be the recipient of the budgeted money if the proposal is approved.
+    if the proposal is approved. It must return an identifier of the proposal
+    created.*/
 
     function addProposal(
         string calldata _title,
@@ -158,10 +160,10 @@ contract quadraticVoting is Ownable {
         return numberOfProposals++;
     }
 
-    /* cancelProposal(): Cancela una propuesta dado su identificador. Solo se puede ejecutar
-    si la votaci ́on est ́a abierta. El  ́unico que puede realizar esta acci ́on es el creador de la
-    propuesta. No se pueden cancelar propuestas ya aprobadas. Los tokens recibidos hasta
-    el momento para votar la propuesta deben ser devueltos a sus propietarios.*/
+    /*cancelProposal(): Cancels a proposal given its identifier. It can only be executed
+    can only be executed if the vote is open. The only one who can perform this action is the creator of the proposal.
+    creator of the proposal. Proposals that have already been approved cannot be cancelled. The tokens received so far to
+    to vote on the proposal must be returned to their owners.*/
 
     function cancelProposal(uint256 proposalId) public OnlyCreator(proposalId) {
         uint256[] memory id = new uint256[](1);
@@ -170,15 +172,13 @@ contract quadraticVoting is Ownable {
         emit Events.ProposalCanceled(proposalId);
     }
 
-    /*buyTokens(): Esta funci ́on permite a un participante ya inscrito comprar m ́as tokens para
-    depositar votos. */
+    /*buyTokens(): buyTokens(): This function allows an already registered participant to buy more tokens to cast votes.*/
 
     function buyTokens() public payable onlyParticipant {
         token.mint(msg.sender, (msg.value * (10 ** 18)) / tokenPrice);
     }
 
-    /* sellTokens(): Operaci ́on complementaria a la anterior: permite a un participante devol-
-    ver tokens no gastados en votaciones y recuperar el dinero invertido en ellos.*/
+    /*sellTokens(): Complementary operation to the previous one: allows a participant to return unspent tokens in votes and recover the money invested in them.*/
 
     function sellTokens(uint256 amount) public onlyParticipant {
         // tokens is actually ether here
@@ -192,17 +192,13 @@ contract quadraticVoting is Ownable {
         token.burn(msg.sender, amount); //TODO seller wants to input number of tokens
     }
 
-    /*getERC20(): Devuelve la direcci ́on del contrato ERC20 que utiliza el sistema de votaci ́on
-    para gestionar tokens. De esta forma, los participantes pueden utilizarlo para operar
-    con los tokens comprados (transferirlos, cederlos, etc.).*/
+    /*getERC20(): Returns the address of the ERC20 contract used by the voting system to manage tokens. to manage tokens. In this way, participants can use it to operate with the tokens purchased (transfer them, exchange them, transfer the tokens, etc.). with the purchased tokens (transfer them, assign them, etc.).*/
 
     function getERC20() public view returns (address) {
         return address(token);
     }
 
-    /* getPendingProposals(): Devuelve un array con los identificadores de todas las propues-
-    tas de financiaci ́on pendientes de aprobar. Solo se puede ejecutar si la votaci ́on est ́a
-    abierta.*/
+    /* getPendingProposals(): Returns an array with the identifiers of all pending funding proposals. It can only be executed if the vote is open.*/
 
     function getPendingProposals()
         public
@@ -213,8 +209,7 @@ contract quadraticVoting is Ownable {
         return _PendingProposals;
     }
 
-    /*getApprovedProposals(): Devuelve un array con los identificadores de todas las propues-
-    tas de financiaci ́on aprobadas. Solo se puede ejecutar si la votaci ́on est ́a abierta. */
+    /*getApprovedProposals(): Returns an array with the identifiers of all approved funding proposals. proposals approved. It can only be executed if the vote is open.*/
 
     function getApprovedProposals()
         public
@@ -225,9 +220,7 @@ contract quadraticVoting is Ownable {
         return _ApprovedProposals;
     }
 
-    /*getSignalingProposals(): Devuelve un array con los identificadores de todas las pro-
-    puestas de signaling (las que se han creado con presupuesto cero). Solo se puede ejecutar
-    si la votaci ́on est ́a abierta. */
+    /*getSignalingProposals(): Returns an array with the identifiers of all the signaling proposals (those created with zero budget). signaling proposals (those created with zero budget). It can only be executed can only be executed if the vote is open.*/
 
     function getSignalingProposals()
         public
@@ -238,8 +231,8 @@ contract quadraticVoting is Ownable {
         return _SignalingProposals;
     }
 
-    /*getProposalInfo(): Devuelve los datos asociados a una propuesta dado su identificador.
-    Solo se puede ejecutar si la votaci ́on est ́a abierta. */
+    /*getProposalInfo(): Returns the data associated with a proposal given its identifier.
+    It can only be executed if the vote is open.*/
 
     function getProposalInfo(
         uint256 proposalId
@@ -287,19 +280,8 @@ contract quadraticVoting is Ownable {
         return _proposals[proposalId].active;
     }
 
-    /* stake(): recibe un identificador de propuesta y la cantidad de votos que se quieren de-
-    positar y realiza el voto del participante que invoca esta funci ́on. Calcula los tokens
-    necesarios para depositar los votos que se van a depositar y comprueba que el parti-
-    cipante ha cedido (con approve) el uso de esos tokens a la cuenta del contrato de la
-    votaci ́on. Recuerda que un participante puede votar varias veces (y en distintas llama-
-    das a stake) una misma propuesta con coste total cuadr ́atico.
-    El c ́odigo de esta funci ́on debe transferir la cantidad de tokens correspondiente desde
-    la cuenta del participante a la cuenta de este contrato QuadraticVoting para poder
-    operar con ellos. Como esta transferencia la realiza este contrato, el votante debe haber
-    cedido previamente con approve los tokens correspondientes a este contrato (esa cesi ́on
-    de tokens no se debe programar en QuadraticVoting: la debe realizar el participante
-    con el contrato ERC20 antes de ejecutar esta funci ́on; el contrato ERC20 se puede
-    obtener con getERC20).*/
+    /* stake(): receives a proposal identifier and the number of votes to be cast and casts the vote of the participant who invokes this function. It calculates the tokens needed to cast the votes to be cast and checks that the participant has assigned (with approve) the use of those tokens to the voting contract account. Remember that a participant can vote several times (and in different stake calls) for the same proposal with the same token. The code for this code is the same as the code for the stake.
+    The code of this function must transfer the corresponding amount of tokens from the participant's account to the stake account. the participant's account to the account of this QuadraticVoting contract in order to be able to trade them. to trade with them. As this transfer is performed by this contract, the voter must have previously transferred with approve the tokens. previously transferred with approve the tokens corresponding to this contract (this transfer of tokens should not be programmed in the of tokens must not be programmed in QuadraticVoting: it must be carried out by the participant with the ERC20 contract before with the ERC20 contract before executing this function; the ERC20 contract can be obtained with getERC20). can be obtained with getERC20).*/
 
     function stake(
         uint256 proposalId,
@@ -331,13 +313,8 @@ contract quadraticVoting is Ownable {
         }
     }
 
-    /*withdrawFromProposal(): Dada una cantidad de votos y el identificador de la propuesta,
-    retira (si es posble) esa cantidad de votos depositados por el participante que invoca esta
-    funci ́on de la propuesta recibida. Un participante solo puede retirar de una propuesta
-    votos que  ́el haya depositado anteriormente y la propuesta no ha sido aprobada o
-    cancelada. Recuerda que debes devolver al participante los tokens que utiliz ́o para
-    depositar los votos que ahora retira (por ejemplo, si hab ́ıa depositado 4 votos a una
-    propuesta y retira 2, se le deben devolver 12 tokens). */
+    /*withdrawFromProposal(): Given an amount of votes and the identifier of the proposal, withdraws (if possible) that amount of votes cast by the participant invoking this function from the received proposal. function from the received proposal. A participant can only withdraw from a proposal
+ a proposal that he has previously cast and the proposal has not been approved or cancelled. canceled. Remember to return to the participant the tokens he used to deposit the votes he now withdraws. the votes he/she now withdraws (e.g., if he/she had deposited 4 votes for a proposal and withdraws 2, he/she will be proposal and withdraws 2, 12 tokens must be returned).*/
 
     function withdrawFromProposal(
         uint256 proposalId,
@@ -355,18 +332,7 @@ contract quadraticVoting is Ownable {
         emit Events.VoteWithdrawed(proposalId, msg.sender, votes);
     }
 
-    /*_checkAndExecuteProposal(): Funci ́on interna que comprueba si se cumplen las con-
-    diciones para ejecutar una propuesta de financiaci ́on y si es as ́ı la ejecuta utilizando
-    la funci ́on executeProposal del contrato externo proporcionado al crear la propuesta.
-    En esta llamada debe transferirse a dicho contrato el dinero presupuestado para su
-    ejecuci ́on. Recuerda que debe actualizarse el presupuesto disponible para propuestas
-    (y no olvides a ̃nadir al presupuesto el importe recibido de los tokens de votos de la
-    propuesta que se acaba de aprobar). Adem ́as deben eliminarse los tokens asociados a
-    los votos recibidos por la propuesta, pues la ejecuci ́on de la propuesta los consume.
-    Las propuestas de signaling no se aprueban durante el proceso de votaci ́on: se ejecutan
-    todas cuando se cierra el proceso con closeVoting. Cuando se realice la llamada a executeProposal del contrato externo, se debe limitar la
-    cantidad m ́axima de gas que puede utilizar para evitar que la propuesta pueda consumir
-    todo el gas de la transacci ́on. Esta llamada debe consumir como m ́aximo 100000 gas. */
+    /*_checkAndExecuteProposal(): Internal function that checks if the conditions for executing a funding proposal are met and if so, executes it using the executeProposal function of the external contract provided when creating the proposal. In this call, the money budgeted for its execution must be transferred to the contract. Remember that the budget available for proposals must be updated. (and do not forget to add to the budget the amount received from the vote tokens of the proposal just approved). In addition, the tokens associated with the votes received for the proposal should be removed, as they are consumed by the proposal execution. The signaling proposals are not approved during the voting process: they are all executed when the process is closed with closeVoting. When the call to executeProposal of the external contract is made, the maximum amount of gas it can use must be limited to prevent the proposal from consuming all the gas of the transaction. This call must consume at least 100000 gas.*/
 
     function _checkAndExecuteProposal(
         uint256 proposalId,
@@ -383,13 +349,13 @@ contract quadraticVoting is Ownable {
             votes * 100 >= threshold &&
             totalBudget >= _proposals[proposalId].budget
         ) {
-            //TODO totalBudget should only consider currentbudget and publicly available budget
+            //TotalBudget should only consider currentbudget and publicly available budget
             token.burn(
                 address(this),
                 (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice
             );
             totalBudget -= _proposals[proposalId].budget;
-            //TODO if a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
+            //If a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
             //executeProposal is called last after all the pending updates in order to protect from reentrancy from external call
             _proposals[proposalId].proposal.executeProposal{
                 value: _proposals[proposalId].budget * tokenPrice,
@@ -399,20 +365,12 @@ contract quadraticVoting is Ownable {
         }
     }
 
-    /*closeVoting(): Cierre del periodo de votaci ́on. Solo puede ejecutar esta funci ́on el usuario
-    que ha creado el contrato de votaci ́on. Cuando termina el periodo de votaci ́on se deben
-    realizar entre otras las siguientes tareas:
-    • Las propuestas de financiaci ́on que no han podido ser aprobadas son descartadas
-    y los tokens recibidos por esas propuestas es devuelto a sus propietarios.
-    • Todas las propuestas de signaling son ejecutadas y los tokens recibidos mediante
-    votos es devuelto a sus propietarios.
-    • El presupuesto de la votaci ́on no gastado en las propuestas se transfiere al propie-
-    tario del contrato de votaci ́on.
-    Cuando se cierra el proceso de votaci ́on no se deben aceptar nuevas propuestas ni votos
-    y el contrato QuadraticVoting debe quedarse en un estado que permita abrir un
-    nuevo proceso de votaci ́on.
-    Esta funci ́on puede consumir una gran cantidad de gas, tenlo en cuenta al programarla
-    y durante las pruebas */
+    /*closeVoting(): Closes the voting period. This function can only be executed by the user who created the voting contract. When the voting period ends, the following tasks, among others, must be performed:
+    - Funding proposals that could not be approved are discarded and the tokens received for those proposals are returned to their owners.
+    - All signaling proposals are executed and the tokens received through votes are returned to their owners.
+    - The voting budget not spent on the proposals is transferred to the owner of the voting contract.
+    - When the voting process is closed, no new proposals or votes should be accepted and the QuadraticVoting contract should remain in a state that allows opening a new voting process.
+    This function can consume a large amount of gas, keep this in mind when programming it and during testing. and during testing*/
 
     function closeVoting() public onlyOwner {
         //All signaling proposals are executed
@@ -430,17 +388,14 @@ contract quadraticVoting is Ownable {
         isVotingOpen = 2;
     }
 
-    function finishVotingSession() public onlyOwner onlyRefundSession{//onlyRefundSession ensures that the voting session has been closed first
+    function finishVotingSession() public onlyOwner onlyRefundSession {
+        //onlyRefundSession ensures that the voting session has been closed first
         //Not invested contracts budget is transfered to owners account
         payable(owner()).transfer(totalBudget);
         //isVotingOpen => 0
         isVotingOpen = 0;
         freeAll();
     }
-
-    /*withdrawRefund: */
-    
-    
 
     /* The closeVoting function will always be called before any single requestFundsReturn.
     This means that all signaling proposals have already been executed
@@ -461,29 +416,35 @@ contract quadraticVoting is Ownable {
     saving index, only pop is continously used.
 
     */
+
     //function requestFundsReturn()
-   function requestFundsReturn() external onlyParticipant onlyRefundSession{
+    function requestFundsReturn() external onlyParticipant onlyRefundSession {
         uint refund = 0;
-        for ( uint256 proposal_i = 0; proposal_i < numberOfProposals; proposal_i++) {
-            //Iterate through all proposals 
+        for (
+            uint256 proposal_i = 0;
+            proposal_i < numberOfProposals;
+            proposal_i++
+        ) {
+            //Iterate through all proposals
             if (!_proposals[proposal_i].active) {
                 continue;
-            }    
+            }
             //Pay voter_address.n_votes^2 to voter_address (amount / )
             uint votes = _proposals[proposal_i]._voters[msg.sender];
-            refund += votes * votes *(10 ** 18) * tokenPrice;
+            refund += votes * votes * (10 ** 18) * tokenPrice;
         }
         _participants[msg.sender] = 0;
         //Return the tokens to the voter for later withdrawal in the token contract
-        token.transfer(msg.sender,refund);
+        token.transfer(msg.sender, refund);
     }
 
     function freeAll() internal {
+        //Freeing all the mappings stablishing their "size" to 0
         numberOfProposals = 0;
         _numberOfParticipants = 0;
         totalBudget = 0;
         delete _SignalingProposals;
-        delete _ApprovedProposals; 
+        delete _ApprovedProposals;
         delete _PendingProposals;
     }
 }
