@@ -244,9 +244,10 @@ contract quadraticVoting is Ownable {
         public
         view
         VotingOpen
-        returns (uint256)
+        returns (string memory)
     {
-        emit Events.ProposalInfo(proposalId,
+        
+        /*emit Events.ProposalInfo(proposalId,
             _proposals[proposalId].title,
             _proposals[proposalId].description,
             _proposals[proposalId].budget,
@@ -254,7 +255,46 @@ contract quadraticVoting is Ownable {
             _proposals[proposalId].creator,
             _proposals[proposalId].currentBudget,
             _proposals[proposalId].active);
+            */
+        return string.concat('title: ', _proposals[proposalId].title, '\n',
+            'description: ', _proposals[proposalId].description
+        );
+    }
+
+    function getProposalInfo_budget(uint256 proposalId)
+        public
+        view
+        VotingOpen
+        returns (uint256)
+    {
         return _proposals[proposalId].budget;
+    }
+
+    function getProposalInfo_currentBudget(uint256 proposalId)
+        public
+        view
+        VotingOpen
+        returns (uint256)
+    {
+        return _proposals[proposalId].currentBudget;
+    }
+
+    function getProposalInfo_voteAmount(uint256 proposalId)
+        public
+        view
+        VotingOpen
+        returns (uint256)
+    {
+        return _proposals[proposalId].voteAmount;
+    }
+
+    function getProposalInfo_active(uint256 proposalId)
+        public
+        view
+        VotingOpen
+        returns (bool)
+    {
+        return _proposals[proposalId].active;
     }
 
     /* stake(): recibe un identificador de propuesta y la cantidad de votos que se quieren de-

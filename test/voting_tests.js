@@ -318,8 +318,10 @@ describe("Voting", function () {
       budget = 20;
       BN_budget = ethers.BigNumber.from(budget);
       await quadraticVoting_from_voter.addProposal("title", "description", budget, proposal_from_voter.address);
+      const output = await quadraticVoting_from_voter.getProposalInfo(1);
+      expected_output = "title: title\ndescription: description"
       // first added proposal has an index of 1
-      expect((await quadraticVoting_from_voter.getProposalInfo(1))).to.equal(BN_budget);
+      expect(output).to.equal(expected_output);
     })
 
     it("CancelProposal(): Only the creator of a proposal can cancel it", async function() {
@@ -341,10 +343,6 @@ describe("Voting", function () {
       // voter cancels it
       expect(await quadraticVoting_from_voter.cancelProposal(1)).to.not.be.reverted;
     })
-
-    
-
-
 
   });
 
