@@ -332,7 +332,15 @@ contract quadraticVoting is Ownable {
             _proposals[proposalId]._votersId.push(msg.sender); //Add the voter to the votersId array
         }
         emit Events.VoteStaked(proposalId, msg.sender, votes);
-        _checkAndExecuteProposal(proposalId, _proposals[proposalId].voteAmount);
+        // need to not call this is signaling proposal because you can still vote for signaling, but
+        // checkAndExecute is notSignalingProposal and it will revert everything.
+        if (
+            _proposals[proposalId].budget != 0
+        )
+        {
+            _checkAndExecuteProposal(proposalId, _proposals[proposalId].voteAmount);
+
+        }
     }
 
     /*withdrawFromProposal(): Dada una cantidad de votos y el identificador de la propuesta,
