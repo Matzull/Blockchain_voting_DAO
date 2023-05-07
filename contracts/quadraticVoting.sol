@@ -325,7 +325,8 @@ contract quadraticVoting is Ownable {
         uint256 price = (currentVotes * currentVotes) -
             (currentVotes - votes) *
             (currentVotes - votes);
-        token.transferFrom(address(this), msg.sender, (price * (10 ** 18)));
+        token.increaseAllowance(address(this), price * tokenPrice);
+        token.transferFrom(address(this), msg.sender, (price * tokenPrice));
         _proposals[proposalId].currentBudget -= price * tokenPrice;
         _proposals[proposalId]._voters[msg.sender] -= votes;
         _proposals[proposalId].voteAmount -= votes;
