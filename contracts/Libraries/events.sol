@@ -10,4 +10,5 @@ library Events {
     event VoterRemoved(address voterAddress);
     event VoteStaked(uint proposalId, address voterAddress, uint votes);
     event VoteWithdrawed(uint proposalId, address voterAddress, uint votes);
+    event ProposalInfo(uint proposalId, string title, string description, uint256 budget, uint256 voteAmount, address creator, uint256 currentBudget, bool active);
 }

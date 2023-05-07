@@ -246,6 +246,14 @@ contract quadraticVoting is Ownable {
         VotingOpen
         returns (uint256)
     {
+        emit Events.ProposalInfo(proposalId,
+            _proposals[proposalId].title,
+            _proposals[proposalId].description,
+            _proposals[proposalId].budget,
+            _proposals[proposalId].voteAmount,
+            _proposals[proposalId].creator,
+            _proposals[proposalId].currentBudget,
+            _proposals[proposalId].active);
         return _proposals[proposalId].budget;
     }
 
