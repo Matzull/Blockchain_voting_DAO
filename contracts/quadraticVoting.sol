@@ -338,7 +338,7 @@ contract quadraticVoting is Ownable {
         uint256 proposalId,
         uint256 votes
     ) internal notSignalingProposal(proposalId) {
-        //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
+        //checking thresholdi = (0,2 + budgeti/totalbudget) · numParticipants + numPendingProposals
         //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
         uint256 threshold = (20 +
             (_proposals[proposalId].budget * 100) /
