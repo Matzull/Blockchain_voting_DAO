@@ -15,7 +15,7 @@ contract quadraticVoting is Ownable {
     uint256 private tokenAmount = 1000000;
     uint256 private totalBudget;
 
-    bool private isVotingOpen;
+    uint8 private isVotingOpen; //0 = voting is closed | 1 = voting is open | 2 = voters can withdraw
 
     Stoken private token;
     struct t_proposal {
@@ -28,7 +28,7 @@ contract quadraticVoting is Ownable {
         mapping(address => uint256) _voters;
         address[] _votersId;
         IExecutableProposal proposal;
-        bool active; //This field is true if the proposal has been canceled or approved
+        bool active; //This field is true if the proposal is still votable
     }
 
     uint256 numberOfProposals;
@@ -42,15 +42,17 @@ contract quadraticVoting is Ownable {
     mapping(address => uint) _participants;
 
     modifier onlyParticipant() {
-        require(
-            _participants[msg.sender] != 0,
-            "Not a participant"
-        );
+        require(_participants[msg.sender] != 0, "Not a participant");
         _;
     }
 
     modifier VotingOpen() {
-        require(isVotingOpen == true, "Voting is closed");
+        require(isVotingOpen == 1, "Voting is closed");
+        _;
+    }
+
+    modifier onlyRefundSession() {
+        require(isVotingOpen == 2, "Cannot refund now");
         _;
     }
 
@@ -89,7 +91,7 @@ contract quadraticVoting is Ownable {
 
     function openVoting() public payable onlyOwner {
         totalBudget = msg.value;
-        isVotingOpen = true;
+        isVotingOpen = 1;
     }
 
     /*addParticipant(): Funci ́on que utilizan los participantes para inscribirse en la votaci ́on.
@@ -103,7 +105,7 @@ contract quadraticVoting is Ownable {
             msg.value >= tokenPrice,
             "Not enough Ether to purchase 1 token"
         );
-        token.mint(msg.sender, (msg.value * (10**18)) / tokenPrice);
+        token.mint(msg.sender, (msg.value * (10 ** 18)) / tokenPrice);
         _participants[msg.sender] = 1;
         _numberOfParticipants++;
         emit Events.VoterCreated(msg.sender);
@@ -164,7 +166,6 @@ contract quadraticVoting is Ownable {
     function cancelProposal(uint256 proposalId) public OnlyCreator(proposalId) {
         uint256[] memory id = new uint256[](1);
         id[0] = proposalId;
-        returnFunds(id);
         _proposals[proposalId].active = false;
         emit Events.ProposalCanceled(proposalId);
     }
@@ -173,7 +174,7 @@ contract quadraticVoting is Ownable {
     depositar votos. */
 
     function buyTokens() public payable onlyParticipant {
-        token.mint(msg.sender, (msg.value * (10**18)) / tokenPrice);
+        token.mint(msg.sender, (msg.value * (10 ** 18)) / tokenPrice);
     }
 
     /* sellTokens(): Operaci ́on complementaria a la anterior: permite a un participante devol-
@@ -181,7 +182,7 @@ contract quadraticVoting is Ownable {
 
     function sellTokens(uint256 amount) public onlyParticipant {
         // tokens is actually ether here
-        uint256 tokens = (amount / (10**18)) * tokenPrice;
+        uint256 tokens = (amount / (10 ** 18)) * tokenPrice;
         require(
             token.balanceOf(msg.sender) >= tokens,
             "Not enough tokens to sell"
@@ -240,13 +241,9 @@ contract quadraticVoting is Ownable {
     /*getProposalInfo(): Devuelve los datos asociados a una propuesta dado su identificador.
     Solo se puede ejecutar si la votaci ́on est ́a abierta. */
 
-    function getProposalInfo(uint256 proposalId)
-        public
-        view
-        VotingOpen
-        returns (string memory)
-    {
-        
+    function getProposalInfo(
+        uint256 proposalId
+    ) public view VotingOpen returns (string memory) {
         /*emit Events.ProposalInfo(proposalId,
             _proposals[proposalId].title,
             _proposals[proposalId].description,
@@ -256,44 +253,37 @@ contract quadraticVoting is Ownable {
             _proposals[proposalId].currentBudget,
             _proposals[proposalId].active);
             */
-        return string.concat('title: ', _proposals[proposalId].title, '\n',
-            'description: ', _proposals[proposalId].description
-        );
+        return
+            string.concat(
+                "title: ",
+                _proposals[proposalId].title,
+                "\n",
+                "description: ",
+                _proposals[proposalId].description
+            );
     }
 
-    function getProposalInfo_budget(uint256 proposalId)
-        public
-        view
-        VotingOpen
-        returns (uint256)
-    {
+    function getProposalInfo_budget(
+        uint256 proposalId
+    ) public view VotingOpen returns (uint256) {
         return _proposals[proposalId].budget;
     }
 
-    function getProposalInfo_currentBudget(uint256 proposalId)
-        public
-        view
-        VotingOpen
-        returns (uint256)
-    {
+    function getProposalInfo_currentBudget(
+        uint256 proposalId
+    ) public view VotingOpen returns (uint256) {
         return _proposals[proposalId].currentBudget;
     }
 
-    function getProposalInfo_voteAmount(uint256 proposalId)
-        public
-        view
-        VotingOpen
-        returns (uint256)
-    {
+    function getProposalInfo_voteAmount(
+        uint256 proposalId
+    ) public view VotingOpen returns (uint256) {
         return _proposals[proposalId].voteAmount;
     }
 
-    function getProposalInfo_active(uint256 proposalId)
-        public
-        view
-        VotingOpen
-        returns (bool)
-    {
+    function getProposalInfo_active(
+        uint256 proposalId
+    ) public view VotingOpen returns (bool) {
         return _proposals[proposalId].active;
     }
 
@@ -311,17 +301,16 @@ contract quadraticVoting is Ownable {
     con el contrato ERC20 antes de ejecutar esta funci ́on; el contrato ERC20 se puede
     obtener con getERC20).*/
 
-    function stake(uint256 proposalId, uint256 votes)
-        public
-        onlyParticipant
-        proposalActive(proposalId)
-    {
+    function stake(
+        uint256 proposalId,
+        uint256 votes
+    ) public onlyParticipant proposalActive(proposalId) {
         uint256 currentVotes = _proposals[proposalId]._voters[msg.sender];
         uint256 price = (currentVotes + votes) *
             (currentVotes + votes) -
             (currentVotes * currentVotes); //price in tokens without decimals()
 
-        token.transferFrom(msg.sender, address(this), (price * (10**18))); //we add the decimals for the transfer
+        token.transferFrom(msg.sender, address(this), (price * (10 ** 18))); //we add the decimals for the transfer
         _proposals[proposalId]._voters[msg.sender] += votes;
         _proposals[proposalId].voteAmount += votes;
         _proposals[proposalId].currentBudget += price * tokenPrice;
@@ -334,12 +323,11 @@ contract quadraticVoting is Ownable {
         emit Events.VoteStaked(proposalId, msg.sender, votes);
         // need to not call this is signaling proposal because you can still vote for signaling, but
         // checkAndExecute is notSignalingProposal and it will revert everything.
-        if (
-            _proposals[proposalId].budget != 0
-        )
-        {
-            _checkAndExecuteProposal(proposalId, _proposals[proposalId].voteAmount);
-
+        if (_proposals[proposalId].budget != 0) {
+            _checkAndExecuteProposal(
+                proposalId,
+                _proposals[proposalId].voteAmount
+            );
         }
     }
 
@@ -351,17 +339,16 @@ contract quadraticVoting is Ownable {
     depositar los votos que ahora retira (por ejemplo, si hab ́ıa depositado 4 votos a una
     propuesta y retira 2, se le deben devolver 12 tokens). */
 
-    function withdrawFromProposal(uint256 proposalId, uint256 votes)
-        public
-        VotingOpen
-        proposalActive(proposalId)
-    {
+    function withdrawFromProposal(
+        uint256 proposalId,
+        uint256 votes
+    ) public VotingOpen proposalActive(proposalId) {
         uint256 currentVotes = _proposals[proposalId]._voters[msg.sender];
         require(currentVotes >= votes, "Not enoughVotes to withdraw");
         uint256 price = (currentVotes * currentVotes) -
             (currentVotes - votes) *
             (currentVotes - votes);
-        token.transferFrom(address(this), msg.sender, (price * (10**18)));
+        token.transferFrom(address(this), msg.sender, (price * (10 ** 18)));
         _proposals[proposalId].currentBudget -= price * tokenPrice;
         _proposals[proposalId]._voters[msg.sender] -= votes;
         _proposals[proposalId].voteAmount -= votes;
@@ -381,10 +368,10 @@ contract quadraticVoting is Ownable {
     cantidad m ́axima de gas que puede utilizar para evitar que la propuesta pueda consumir
     todo el gas de la transacci ́on. Esta llamada debe consumir como m ́aximo 100000 gas. */
 
-    function _checkAndExecuteProposal(uint256 proposalId, uint256 votes)
-        internal
-        notSignalingProposal(proposalId)
-    {
+    function _checkAndExecuteProposal(
+        uint256 proposalId,
+        uint256 votes
+    ) internal notSignalingProposal(proposalId) {
         //checking thresholdi = (0,2 + budgeti/totalbudget) · numP articipants + numP endingP roposals
         //We multiply the threshold by 100 to avoid the use of floats, we also need to multiply the votes in the comparison below
         uint256 threshold = (20 +
@@ -399,7 +386,7 @@ contract quadraticVoting is Ownable {
             //TODO totalBudget should only consider currentbudget and publicly available budget
             token.burn(
                 address(this),
-                (_proposals[proposalId].currentBudget * (10**18)) / tokenPrice
+                (_proposals[proposalId].currentBudget * (10 ** 18)) / tokenPrice
             );
             totalBudget -= _proposals[proposalId].budget;
             //TODO if a proposal is executed it needs to be moved pendingProposals to approvedProposals, and
@@ -428,8 +415,6 @@ contract quadraticVoting is Ownable {
     y durante las pruebas */
 
     function closeVoting() public onlyOwner {
-        //Not approved proposals are discarded
-        returnFunds(getPendingProposals());
         //All signaling proposals are executed
         uint256[] memory proposalsIds = getSignalingProposals();
         for (uint256 i = 0; i < proposalsIds.length; i++) {
@@ -439,49 +424,23 @@ contract quadraticVoting is Ownable {
                 _proposals[proposalsIds[i]].currentBudget
             );
         }
-        returnFunds(getSignalingProposals());
         //Not invested contracts budget is transfered to owners account
         payable(owner()).transfer(totalBudget);
         //isVotingOpen => False
-        isVotingOpen = false;
+        isVotingOpen = 2;
+    }
+
+    function finishVotingSession() public onlyOwner onlyRefundSession{//onlyRefundSession ensures that the voting session has been closed first
+        //Not invested contracts budget is transfered to owners account
+        payable(owner()).transfer(totalBudget);
+        //isVotingOpen => 0
+        isVotingOpen = 0;
         freeAll();
     }
 
-    /*returnFunds(): Funcion que devuelve los fondos de una propuesta a sus votantes.*/
-    function returnFunds(uint256[] memory proposalsId) internal {
-        for (
-            uint256 proposal_i = 0;
-            proposal_i < proposalsId.length;
-            proposal_i++
-        ) {
-            //Iterate through proposals
-            if (!_proposals[proposalsId[proposal_i]].active) {
-                continue;
-            }
-            for (
-                uint256 voter_i = 0;
-                voter_i < _proposals[proposalsId[proposal_i]]._votersId.length;
-                voter_i++
-            ) {
-                //Iterate through voters of proposal_i
-                address payable voter_address = payable(
-                    _proposals[proposalsId[proposal_i]]._votersId[voter_i]
-                ); //Get address of voter_i
-                //Pay voter_address.n_votes^2 to voter_address (amount / )
-                token.transfer(
-                    voter_address,
-                    (_proposals[proposalsId[proposal_i]]._voters[
-                        voter_address
-                    ] *
-                        _proposals[proposalsId[proposal_i]]._voters[
-                            voter_address
-                        ]) *
-                        (10**18) *
-                        tokenPrice
-                );
-            }
-        }
-    }
+    /*withdrawRefund: */
+    
+    
 
     /* The closeVoting function will always be called before any single requestFundsReturn.
     This means that all signaling proposals have already been executed
@@ -503,8 +462,28 @@ contract quadraticVoting is Ownable {
 
     */
     //function requestFundsReturn()
+   function requestFundsReturn() external onlyParticipant onlyRefundSession{
+        uint refund = 0;
+        for ( uint256 proposal_i = 0; proposal_i < numberOfProposals; proposal_i++) {
+            //Iterate through all proposals 
+            if (!_proposals[proposal_i].active) {
+                continue;
+            }    
+            //Pay voter_address.n_votes^2 to voter_address (amount / )
+            uint votes = _proposals[proposal_i]._voters[msg.sender];
+            refund += votes * votes *(10 ** 18) * tokenPrice;
+        }
+        _participants[msg.sender] = 0;
+        //Return the tokens to the voter for later withdrawal in the token contract
+        token.transfer(msg.sender,refund);
+    }
 
     function freeAll() internal {
-        //TODO Clear all the arrays previosly created
+        numberOfProposals = 0;
+        _numberOfParticipants = 0;
+        totalBudget = 0;
+        delete _SignalingProposals;
+        delete _ApprovedProposals; 
+        delete _PendingProposals;
     }
 }
